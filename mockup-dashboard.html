@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto Trading Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #131823;
+      --bg-tertiary: #1a1f2e;
+      --accent-primary: #00ff9f;
+      --accent-secondary: #00d4ff;
+      --accent-danger: #ff3366;
+      --text-primary: #e8ecf3;
+      --text-secondary: #8b92a8;
+      --text-muted: #4a5568;
+      --border-color: rgba(0, 255, 159, 0.15);
+      --glow: rgba(0, 255, 159, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Animated Grid Background */
+    .background-grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.03;
+      background-image:
+        linear-gradient(var(--accent-primary) 1px, transparent 1px),
+        linear-gradient(90deg, var(--accent-primary) 1px, transparent 1px);
+      background-size: 50px 50px;
+      animation: gridMove 20s linear infinite;
+    }
+
+    @keyframes gridMove {
+      0% { transform: translate(0, 0); }
+      100% { transform: translate(50px, 50px); }
+    }
+
+    /* Glowing orbs in background */
+    .background-orbs {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      animation: float 15s ease-in-out infinite;
+    }
+
+    .orb-1 {
+      width: 400px;
+      height: 400px;
+      background: var(--accent-primary);
+      top: -200px;
+      right: -200px;
+      animation-delay: 0s;
+    }
+
+    .orb-2 {
+      width: 300px;
+      height: 300px;
+      background: var(--accent-secondary);
+      bottom: -150px;
+      left: -150px;
+      animation-delay: 5s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(50px, -50px) scale(1.1); }
+    }
+
+    /* Container */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 2rem;
+      background: rgba(19, 24, 35, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      animation: slideDown 0.6s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      position: relative;
+    }
+
+    .logo-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 10px var(--glow));
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-transform: uppercase;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(0, 255, 159, 0.1);
+      border: 1px solid var(--accent-primary);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-primary);
+    }
+
+    .icon-button {
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .icon-button:hover {
+      background: rgba(0, 255, 159, 0.1);
+      border-color: var(--accent-primary);
+      transform: translateY(-2px);
+    }
+
+    .icon-button svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: rgba(19, 24, 35, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.6s ease-out backwards;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .stat-card:hover {
+      border-color: var(--accent-primary);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 40px rgba(0, 255, 159, 0.2);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      opacity: 0.6;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 600;
+      font-family: 'Syne', sans-serif;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-change {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .stat-change.positive {
+      color: var(--accent-primary);
+    }
+
+    .stat-change.negative {
+      color: var(--accent-danger);
+    }
+
+    /* Main Content Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .panel {
+      background: rgba(19, 24, 35, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      animation: fadeInUp 0.6s ease-out backwards;
+      animation-delay: 0.5s;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .panel-title svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--accent-primary);
+    }
+
+    /* Chart Area */
+    .chart-area {
+      height: 300px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .chart-placeholder {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Fake chart lines */
+    .chart-lines {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0.3;
+    }
+
+    .chart-line {
+      position: absolute;
+      height: 1px;
+      width: 100%;
+      background: var(--accent-primary);
+      left: 0;
+    }
+
+    .chart-line:nth-child(1) { top: 20%; }
+    .chart-line:nth-child(2) { top: 40%; }
+    .chart-line:nth-child(3) { top: 60%; }
+    .chart-line:nth-child(4) { top: 80%; }
+
+    /* Positions Table */
+    .positions-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 0.5rem;
+    }
+
+    .positions-table thead th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.2);
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .positions-table thead th:first-child {
+      border-left: 1px solid var(--border-color);
+      border-radius: 8px 0 0 8px;
+    }
+
+    .positions-table thead th:last-child {
+      border-right: 1px solid var(--border-color);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .positions-table tbody tr {
+      background: rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .positions-table tbody tr:hover {
+      background: rgba(0, 255, 159, 0.05);
+      transform: translateX(4px);
+    }
+
+    .positions-table tbody td {
+      padding: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .positions-table tbody td:first-child {
+      border-left: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 8px 0 0 8px;
+    }
+
+    .positions-table tbody td:last-child {
+      border-right: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .symbol-cell {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-family: 'Syne', sans-serif;
+    }
+
+    .side-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .side-badge.long {
+      background: rgba(0, 255, 159, 0.15);
+      color: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
+    }
+
+    .side-badge.short {
+      background: rgba(255, 51, 102, 0.15);
+      color: var(--accent-danger);
+      border: 1px solid var(--accent-danger);
+    }
+
+    .pnl-positive {
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+
+    .pnl-negative {
+      color: var(--accent-danger);
+      font-weight: 600;
+    }
+
+    .action-button {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .action-button:hover {
+      background: rgba(255, 51, 102, 0.15);
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
+    }
+
+    /* Orders Section */
+    .orders-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .order-item {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .order-item:hover {
+      background: rgba(0, 255, 159, 0.05);
+      border-color: var(--border-color);
+    }
+
+    .order-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .order-symbol {
+      font-weight: 600;
+      font-family: 'Syne', sans-serif;
+      font-size: 1rem;
+    }
+
+    .order-details {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .order-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-badge-small {
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-filled {
+      background: rgba(0, 255, 159, 0.15);
+      color: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
+    }
+
+    /* Trading Controls */
+    .trading-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .control-button {
+      flex: 1;
+      padding: 1rem;
+      border-radius: 12px;
+      border: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .control-button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .control-button:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .control-button span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .control-enabled {
+      background: linear-gradient(135deg, var(--accent-primary), #00cc7f);
+      color: #0a0e1a;
+      box-shadow: 0 4px 20px rgba(0, 255, 159, 0.3);
+    }
+
+    .control-enabled:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(0, 255, 159, 0.5);
+    }
+
+    .control-danger {
+      background: linear-gradient(135deg, var(--accent-danger), #cc0033);
+      color: white;
+      box-shadow: 0 4px 20px rgba(255, 51, 102, 0.3);
+    }
+
+    .control-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(255, 51, 102, 0.5);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border-color);
+      margin-top: 2rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .header-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .trading-controls {
+        flex-direction: column;
+      }
+    }
+
+    /* Scanline effect */
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100vh); }
+    }
+
+    .scanline {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(transparent, var(--accent-primary), transparent);
+      opacity: 0.1;
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background Effects -->
+  <div class="background-grid"></div>
+  <div class="background-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+  <div class="scanline"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 5L35 12.5V27.5L20 35L5 27.5V12.5L20 5Z" stroke="url(#gradient1)" stroke-width="2" fill="none"/>
+            <circle cx="20" cy="20" r="6" fill="url(#gradient2)"/>
+            <path d="M20 14V26M14 20H26" stroke="#0a0e1a" stroke-width="2" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="gradient1" x1="5" y1="5" x2="35" y2="35">
+                <stop stop-color="#00ff9f"/>
+                <stop offset="1" stop-color="#00d4ff"/>
+              </linearGradient>
+              <linearGradient id="gradient2" x1="14" y1="14" x2="26" y2="26">
+                <stop stop-color="#00ff9f"/>
+                <stop offset="1" stop-color="#00d4ff"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="logo-text">NeXTra</span>
+      </div>
+
+      <div class="header-controls">
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          <span>TRADING ACTIVE</span>
+        </div>
+
+        <button class="icon-button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+          </svg>
+        </button>
+
+        <button class="icon-button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+        </button>
+
+        <button class="icon-button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4m0-4h.01"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Total Balance</span>
+          <div class="stat-icon">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="8" width="24" height="16" rx="2"/>
+              <path d="M4 14h24M8 18h8"/>
+            </svg>
+          </div>
+        </div>
+        <div class="stat-value">$24,589.42</div>
+        <div class="stat-change positive">
+          <span>▲</span>
+          <span>+12.5% today</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Today's P&L</span>
+          <div class="stat-icon">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 24l6-8 6 4 8-12 4 4"/>
+              <path d="M24 8h4v4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="stat-value">+$342.18</div>
+        <div class="stat-change positive">
+          <span>▲</span>
+          <span>8 trades executed</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Open Positions</span>
+          <div class="stat-icon">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="16" cy="10" r="4"/>
+              <path d="M16 14v12m-6-4l6 4 6-4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="stat-value">5</div>
+        <div class="stat-change positive">
+          <span>▲</span>
+          <span>+$156.32 unrealized</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Exposure</span>
+          <div class="stat-icon">
+            <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="16" cy="16" r="12"/>
+              <path d="M16 8v8l4 4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="stat-value">32.4%</div>
+        <div class="stat-change">
+          <span>$7,967 / $24,589</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="main-grid">
+      <!-- PnL Chart -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"/>
+              <path d="M7 16l4-6 4 2 5-7"/>
+            </svg>
+            Performance Chart
+          </h2>
+          <span style="font-size: 0.85rem; color: var(--text-secondary);">Last 24h</span>
+        </div>
+        <div class="chart-area">
+          <div class="chart-lines">
+            <div class="chart-line"></div>
+            <div class="chart-line"></div>
+            <div class="chart-line"></div>
+            <div class="chart-line"></div>
+          </div>
+          <div class="chart-placeholder">
+            <svg width="400" height="200" viewBox="0 0 400 200" fill="none" stroke="url(#chartGradient)" stroke-width="3">
+              <path d="M 0,150 Q 50,120 100,140 T 200,100 T 300,80 T 400,60" fill="none"/>
+              <defs>
+                <linearGradient id="chartGradient" x1="0" y1="0" x2="400" y2="0">
+                  <stop offset="0%" stop-color="#00ff9f" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#00d4ff" stop-opacity="0.8"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Orders -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 5H2v7h7V5zM22 5h-7v7h7V5zM9 18H2v-7h7v7zM22 18h-7v-7h7v7z"/>
+            </svg>
+            Recent Orders
+          </h2>
+          <a href="#" style="font-size: 0.85rem; color: var(--accent-primary);">View All →</a>
+        </div>
+        <div class="orders-list">
+          <div class="order-item">
+            <div class="order-info">
+              <div class="order-symbol">BTC/USDT</div>
+              <div class="order-details">BUY • MARKET • 0.0145 BTC</div>
+            </div>
+            <div class="order-status">
+              <span style="color: var(--text-secondary); font-size: 0.85rem;">10:34:22</span>
+              <span class="status-badge-small status-filled">FILLED</span>
+            </div>
+          </div>
+
+          <div class="order-item">
+            <div class="order-info">
+              <div class="order-symbol">ETH/USDT</div>
+              <div class="order-details">BUY • LIMIT • 1.25 ETH @ $2,450</div>
+            </div>
+            <div class="order-status">
+              <span style="color: var(--text-secondary); font-size: 0.85rem;">10:28:15</span>
+              <span class="status-badge-small status-filled">FILLED</span>
+            </div>
+          </div>
+
+          <div class="order-item">
+            <div class="order-info">
+              <div class="order-symbol">SOL/USDT</div>
+              <div class="order-details">SELL • MARKET • 15.5 SOL</div>
+            </div>
+            <div class="order-status">
+              <span style="color: var(--text-secondary); font-size: 0.85rem;">10:15:43</span>
+              <span class="status-badge-small status-filled">FILLED</span>
+            </div>
+          </div>
+
+          <div class="order-item">
+            <div class="order-info">
+              <div class="order-symbol">BNB/USDT</div>
+              <div class="order-details">BUY • MARKET • 3.2 BNB</div>
+            </div>
+            <div class="order-status">
+              <span style="color: var(--text-secondary); font-size: 0.85rem;">09:58:31</span>
+              <span class="status-badge-small status-filled">FILLED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open Positions Table -->
+    <div class="panel" style="animation-delay: 0.6s;">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 3v18M3 9h18M3 15h18"/>
+          </svg>
+          Open Positions
+        </h2>
+        <span style="font-size: 0.85rem; color: var(--text-secondary);">5 active</span>
+      </div>
+
+      <table class="positions-table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Entry Price</th>
+            <th>Current Price</th>
+            <th>Quantity</th>
+            <th>P&L</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="symbol-cell">BTC/USDT</td>
+            <td><span class="side-badge long">LONG</span></td>
+            <td>$51,240.00</td>
+            <td>$51,850.00</td>
+            <td>0.0145 BTC</td>
+            <td class="pnl-positive">+$8.85 (+1.19%)</td>
+            <td><button class="action-button">CLOSE</button></td>
+          </tr>
+          <tr>
+            <td class="symbol-cell">ETH/USDT</td>
+            <td><span class="side-badge long">LONG</span></td>
+            <td>$2,450.00</td>
+            <td>$2,489.50</td>
+            <td>1.25 ETH</td>
+            <td class="pnl-positive">+$49.38 (+1.61%)</td>
+            <td><button class="action-button">CLOSE</button></td>
+          </tr>
+          <tr>
+            <td class="symbol-cell">SOL/USDT</td>
+            <td><span class="side-badge long">LONG</span></td>
+            <td>$98.45</td>
+            <td>$101.20</td>
+            <td>15.5 SOL</td>
+            <td class="pnl-positive">+$42.62 (+2.79%)</td>
+            <td><button class="action-button">CLOSE</button></td>
+          </tr>
+          <tr>
+            <td class="symbol-cell">BNB/USDT</td>
+            <td><span class="side-badge long">LONG</span></td>
+            <td>$312.80</td>
+            <td>$318.45</td>
+            <td>3.2 BNB</td>
+            <td class="pnl-positive">+$18.08 (+1.81%)</td>
+            <td><button class="action-button">CLOSE</button></td>
+          </tr>
+          <tr>
+            <td class="symbol-cell">AVAX/USDT</td>
+            <td><span class="side-badge long">LONG</span></td>
+            <td>$36.75</td>
+            <td>$38.12</td>
+            <td>42.0 AVAX</td>
+            <td class="pnl-positive">+$37.39 (+3.73%)</td>
+            <td><button class="action-button">CLOSE</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Trading Controls -->
+    <div class="panel" style="animation-delay: 0.7s;">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6M1 12h6m6 0h6"/>
+          </svg>
+          System Controls
+        </h2>
+      </div>
+      <div class="trading-controls">
+        <button class="control-button control-enabled">
+          <span>✓ Trading Enabled</span>
+        </button>
+        <button class="control-button control-danger">
+          <span>⚠ Emergency Stop</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      <p>NeXTra Trading Terminal • v1.0.0 • Connected to Binance API</p>
+      <p style="margin-top: 0.5rem; opacity: 0.5;">Risk Disclaimer: Cryptocurrency trading involves substantial risk of loss</p>
+    </footer>
+  </div>
+</body>
+</html>
