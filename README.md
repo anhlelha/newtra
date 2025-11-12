@@ -4,6 +4,7 @@
 
 ## Tính năng
 
+### Backend
 - **Kết nối Binance API**: Tự động đặt lệnh mua/bán cryptocurrency trên Binance
 - **TradingView Webhook**: Nhận và xử lý alert từ TradingView theo thời gian thực
 - **Quản lý rủi ro**: Position sizing, stop loss tự động, giới hạn exposure
@@ -11,12 +12,42 @@
 - **Logging & Monitoring**: Ghi log chi tiết, health check endpoints
 - **Security**: Authentication, rate limiting, secure credentials management
 
+### Frontend Dashboard
+- **Dark Cyber Terminal UI**: Professional trading terminal với dark theme
+- **Real-time Updates**: Auto-refresh data mỗi 5 giây
+- **Interactive Charts**: Performance charts với Recharts
+- **Animated Components**: Smooth animations với Framer Motion
+- **Responsive Design**: Tối ưu cho desktop và mobile
+
 ## Kiến trúc
 
 ```
-TradingView → Webhook → Express API → Trading Engine → Binance API
-                            ↓
-                        SQLite DB
+┌─────────────┐
+│ TradingView │
+└──────┬──────┘
+       │ Webhook
+       ▼
+┌──────────────────────────────┐
+│    Express.js Backend API    │
+│   ┌──────────────────────┐   │
+│   │   Trading Engine     │   │  ┌──────────────┐
+│   │  - Signal Processor  │───┼──►   Binance    │
+│   │  - Order Manager     │   │  │     API      │
+│   │  - Risk Manager      │   │  └──────────────┘
+│   └──────────┬───────────┘   │
+│              ▼               │
+│      ┌──────────────┐        │
+│      │ SQLite DB    │        │
+│      └──────────────┘        │
+└──────────────┬───────────────┘
+               │ REST API
+               ▼
+┌──────────────────────────────┐
+│  React Dashboard (Frontend)  │
+│  - Real-time monitoring      │
+│  - Position management       │
+│  - Trading controls          │
+└──────────────────────────────┘
 ```
 
 Xem chi tiết: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -38,13 +69,23 @@ git clone <repository-url>
 cd crypto-trading-bot
 ```
 
-### 2. Cài đặt dependencies
+### 2. Cài đặt Backend dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Cấu hình môi trường
+### 3. Cài đặt Frontend dependencies
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### 4. Cấu hình môi trường
+
+**Backend:**
 
 ```bash
 cp .env.example .env
@@ -71,30 +112,64 @@ MAX_POSITION_SIZE_PERCENT=5
 MAX_DAILY_LOSS=1000
 ```
 
-### 4. Khởi tạo database
+**Frontend:**
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+Chỉnh sửa `frontend/.env`:
+
+```bash
+VITE_API_URL=/api
+VITE_ADMIN_API_KEY=your_admin_api_key  # Same as backend ADMIN_API_KEY
+```
+
+### 5. Khởi tạo database
 
 ```bash
 npm run migrate
 ```
 
-### 5. Build TypeScript
+### 6. Build Backend TypeScript
 
 ```bash
 npm run build
 ```
 
-### 6. Chạy ứng dụng
+### 7. Chạy ứng dụng
 
-**Development:**
+**Development Mode:**
+
+Terminal 1 - Backend:
 ```bash
 npm run dev
 ```
 
+Terminal 2 - Frontend:
+```bash
+cd frontend
+npm run dev
+```
+
+Frontend sẽ chạy tại `http://localhost:5173`
+Backend API tại `http://localhost:3000`
+
 **Production:**
+
+Backend:
 ```bash
 npm start
 # Hoặc với PM2:
 pm2 start ecosystem.config.js
+```
+
+Frontend (build và serve):
+```bash
+cd frontend
+npm run build
+# Serve dist/ folder với Nginx hoặc static hosting
 ```
 
 ## Sử dụng
@@ -223,7 +298,7 @@ crypto-trading-bot/
 │   ├── ARCHITECTURE.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── AWS_DEPLOYMENT_GUIDE.md
-├── src/
+├── src/                    # Backend source
 │   ├── api/                # API routes & controllers
 │   │   ├── controllers/
 │   │   ├── middlewares/
@@ -239,17 +314,27 @@ crypto-trading-bot/
 │   ├── utils/              # Utilities
 │   ├── server.ts           # Express server setup
 │   └── index.ts            # Entry point
-├── dist/                   # Compiled JavaScript
+├── frontend/               # React dashboard
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── lib/           # API client
+│   │   ├── types/         # TypeScript types
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── dist/              # Built frontend
+│   └── package.json
+├── dist/                   # Compiled backend JavaScript
 ├── logs/                   # Application logs
 ├── data/                   # SQLite database
-├── .env                    # Environment variables
+├── .env                    # Backend environment variables
 ├── ecosystem.config.js     # PM2 configuration
-├── package.json
+├── package.json            # Backend dependencies
 └── tsconfig.json
 ```
 
 ## Scripts
 
+### Backend
 ```bash
 npm run dev           # Development mode với hot reload
 npm run build         # Build TypeScript → JavaScript
@@ -258,6 +343,14 @@ npm test              # Chạy tests
 npm run lint          # Lint code
 npm run format        # Format code với Prettier
 npm run migrate       # Chạy database migrations
+```
+
+### Frontend
+```bash
+cd frontend
+npm run dev           # Development server (port 5173)
+npm run build         # Build for production
+npm run preview       # Preview production build
 ```
 
 ## Quản lý rủi ro
@@ -366,6 +459,7 @@ curl https://api.binance.com/api/v3/ping
 - [Technical Architecture](docs/ARCHITECTURE.md)
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)
 - [AWS Deployment Guide](docs/AWS_DEPLOYMENT_GUIDE.md)
+- [Frontend README](frontend/README.md)
 
 ## Support
 

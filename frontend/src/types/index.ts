@@ -1,0 +1,80 @@
+export interface Balance {
+  asset: string;
+  free: string;
+  locked: string;
+}
+
+export interface Position {
+  id: string;
+  symbol: string;
+  side: 'LONG' | 'SHORT';
+  entry_price: number;
+  quantity: number;
+  stop_loss_price?: number;
+  stop_loss_order_id?: string;
+  entry_order_id: string;
+  exit_order_id?: string;
+  realized_pnl: number;
+  status: 'OPEN' | 'CLOSED';
+  opened_at: string;
+  closed_at?: string;
+  currentPrice?: number;
+  unrealizedPnL?: number;
+}
+
+export interface Order {
+  id: string;
+  binance_order_id?: string;
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  type: 'MARKET' | 'LIMIT' | 'STOP_LOSS' | 'STOP_LOSS_LIMIT';
+  quantity: number;
+  price?: number;
+  stop_price?: number;
+  status: 'NEW' | 'FILLED' | 'PARTIALLY_FILLED' | 'CANCELED' | 'REJECTED' | 'EXPIRED';
+  filled_quantity: number;
+  avg_fill_price?: number;
+  commission?: number;
+  commission_asset?: string;
+  signal_data?: string;
+  error_message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SystemStatus {
+  status: 'running' | 'stopped' | 'error';
+  tradingEnabled: boolean;
+  openPositions: number;
+  todayPnL: number;
+  currentExposure: number;
+  uptime: number;
+}
+
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  uptime: number;
+  checks: {
+    database: boolean;
+    binance: boolean;
+    disk: boolean;
+    memory: boolean;
+  };
+  system?: {
+    memory: {
+      free: number;
+      total: number;
+      usagePercent: string;
+    };
+    uptime: number;
+  };
+}
+
+export interface StatCard {
+  label: string;
+  value: string;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+  icon: string;
+}
