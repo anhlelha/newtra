@@ -8,6 +8,7 @@ const logger = createModuleLogger('PendingSignalService');
 export interface PendingSignal {
   id: string;
   strategy_id: string;
+  strategy_name?: string; // Optional, populated when joining with strategies table
   signal_id: string;
   symbol: string;
   action: 'buy' | 'sell' | 'close';
@@ -111,20 +112,27 @@ export class PendingSignalService {
     status?: 'pending' | 'approved' | 'rejected',
     strategyId?: string
   ): PendingSignal[] {
-    let query = 'SELECT * FROM pending_signals WHERE 1=1';
+    let query = `
+      SELECT
+        ps.*,
+        s.name as strategy_name
+      FROM pending_signals ps
+      LEFT JOIN strategies s ON ps.strategy_id = s.id
+      WHERE 1=1
+    `;
     const params: any[] = [];
 
     if (status) {
-      query += ' AND status = ?';
+      query += ' AND ps.status = ?';
       params.push(status);
     }
 
     if (strategyId) {
-      query += ' AND strategy_id = ?';
+      query += ' AND ps.strategy_id = ?';
       params.push(strategyId);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT 100';
+    query += ' ORDER BY ps.created_at DESC LIMIT 100';
 
     const stmt = this.db.prepare(query);
 

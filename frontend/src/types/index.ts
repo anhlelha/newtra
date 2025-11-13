@@ -92,6 +92,7 @@ export interface Strategy {
 export interface PendingSignal {
   id: string;
   strategy_id: string;
+  strategy_name?: string;
   signal_id: string;
   symbol: string;
   action: 'buy' | 'sell' | 'close';

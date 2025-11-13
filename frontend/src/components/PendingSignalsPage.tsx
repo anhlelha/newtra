@@ -87,6 +87,7 @@ export default function PendingSignalsPage() {
                 <thead>
                   <tr>
                     <th>Symbol</th>
+                    <th>Strategy</th>
                     <th>Action</th>
                     <th>Type</th>
                     <th>Price</th>
@@ -107,6 +108,9 @@ export default function PendingSignalsPage() {
                         transition={{ duration: 0.4, delay: index * 0.05 }}
                       >
                         <td className="signal-symbol">{signal.symbol}</td>
+                        <td className="signal-strategy">
+                          {signal.strategy_name || 'Unknown'}
+                        </td>
                         <td>
                           <span className={`action-badge ${signal.action}`}>
                             {signal.action.toUpperCase()}
