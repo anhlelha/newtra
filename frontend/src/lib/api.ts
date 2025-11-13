@@ -1,5 +1,15 @@
 import axios from 'axios';
-import type { Position, Order, SystemStatus, HealthStatus, Balance } from '../types';
+import type {
+  Position,
+  Order,
+  SystemStatus,
+  HealthStatus,
+  Balance,
+  Strategy,
+  PendingSignal,
+  CreateStrategyInput,
+  UpdateStrategyInput,
+} from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY || '';
@@ -66,6 +76,60 @@ export const apiClient = {
   // Signals
   getSignals: async (limit: number = 20): Promise<any[]> => {
     const { data } = await api.get('/signals', { params: { limit } });
+    return data;
+  },
+
+  // Strategies
+  getStrategies: async (): Promise<Strategy[]> => {
+    const { data } = await api.get('/strategies');
+    return data;
+  },
+
+  getStrategy: async (id: string): Promise<Strategy> => {
+    const { data } = await api.get(`/strategies/${id}`);
+    return data;
+  },
+
+  createStrategy: async (input: CreateStrategyInput): Promise<Strategy> => {
+    const { data } = await api.post('/strategies', input);
+    return data;
+  },
+
+  updateStrategy: async (id: string, input: UpdateStrategyInput): Promise<Strategy> => {
+    const { data } = await api.put(`/strategies/${id}`, input);
+    return data;
+  },
+
+  deleteStrategy: async (id: string): Promise<void> => {
+    await api.delete(`/strategies/${id}`);
+  },
+
+  toggleStrategy: async (id: string): Promise<Strategy> => {
+    const { data } = await api.post(`/strategies/${id}/toggle`);
+    return data;
+  },
+
+  // Pending Signals
+  getPendingSignals: async (params?: {
+    status?: 'pending' | 'approved' | 'rejected';
+    strategyId?: string;
+  }): Promise<PendingSignal[]> => {
+    const { data } = await api.get('/pending-signals', { params });
+    return data;
+  },
+
+  getPendingSignalsCount: async (): Promise<{ count: number }> => {
+    const { data } = await api.get('/pending-signals/count');
+    return data;
+  },
+
+  approvePendingSignal: async (id: string): Promise<PendingSignal> => {
+    const { data } = await api.post(`/pending-signals/${id}/approve`);
+    return data;
+  },
+
+  rejectPendingSignal: async (id: string): Promise<PendingSignal> => {
+    const { data} = await api.post(`/pending-signals/${id}/reject`);
     return data;
   },
 };

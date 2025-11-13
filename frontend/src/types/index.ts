@@ -78,3 +78,43 @@ export interface StatCard {
   changeType?: 'positive' | 'negative' | 'neutral';
   icon: string;
 }
+
+export interface Strategy {
+  id: string;
+  name: string;
+  type: 'automatic' | 'manual';
+  description?: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PendingSignal {
+  id: string;
+  strategy_id: string;
+  signal_id: string;
+  symbol: string;
+  action: 'buy' | 'sell' | 'close';
+  order_type: string;
+  price: number | null;
+  quantity: number | null;
+  signal_data: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
+export interface CreateStrategyInput {
+  name: string;
+  type: 'automatic' | 'manual';
+  description?: string;
+  enabled?: boolean;
+}
+
+export interface UpdateStrategyInput {
+  name?: string;
+  type?: 'automatic' | 'manual';
+  description?: string;
+  enabled?: boolean;
+}

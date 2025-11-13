@@ -53,6 +53,12 @@ export const Dashboard = () => {
     refetchInterval: 5000,
   });
 
+  const { data: pendingSignalsCount } = useQuery({
+    queryKey: ['pendingSignalsCount'],
+    queryFn: apiClient.getPendingSignalsCount,
+    refetchInterval: 5000,
+  });
+
   const handleToggleTrading = async () => {
     try {
       await apiClient.updateConfig({
@@ -110,6 +116,15 @@ export const Dashboard = () => {
           />
 
           <StatCard
+            label="Pending Signals"
+            value={(pendingSignalsCount?.count || 0).toString()}
+            change="Awaiting manual approval"
+            changeType={pendingSignalsCount?.count && pendingSignalsCount.count > 0 ? 'neutral' : 'positive'}
+            icon={<ClockIcon />}
+            delay={0.3}
+          />
+
+          <StatCard
             label="Open Positions"
             value={openPositionsCount.toString()}
             change={
@@ -119,7 +134,7 @@ export const Dashboard = () => {
             }
             changeType={positions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0) >= 0 ? 'positive' : 'negative'}
             icon={<TargetIcon />}
-            delay={0.3}
+            delay={0.4}
           />
 
           <StatCard
@@ -127,8 +142,8 @@ export const Dashboard = () => {
             value={`${exposurePercent.toFixed(1)}%`}
             change={`$${totalExposure.toLocaleString()} / $${totalBalance.toLocaleString()}`}
             changeType="neutral"
-            icon={<ClockIcon />}
-            delay={0.4}
+            icon={<GridIcon />}
+            delay={0.5}
           />
         </div>
 
