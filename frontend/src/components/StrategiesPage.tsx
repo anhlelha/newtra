@@ -42,6 +42,7 @@ export default function StrategiesPage() {
       apiClient.updateStrategy(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['strategies'] });
+      setShowCreateModal(false);
       setEditingStrategy(null);
       resetForm();
     },
