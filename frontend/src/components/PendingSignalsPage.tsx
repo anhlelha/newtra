@@ -5,6 +5,8 @@ import { apiClient } from '../lib/api';
 import { Background } from './Background';
 import { Panel } from './Panel';
 import { ClockIcon } from './icons';
+import { formatShortDateTimeGMT7 } from '../utils/timeFormat';
+import './PendingSignalsPage.css';
 
 export default function PendingSignalsPage() {
   const queryClient = useQueryClient();
@@ -52,32 +54,6 @@ export default function PendingSignalsPage() {
     }
   };
 
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case 'buy':
-        return 'text-green-400 border-green-500 bg-green-500/10';
-      case 'sell':
-        return 'text-red-400 border-red-500 bg-red-500/10';
-      case 'close':
-        return 'text-yellow-400 border-yellow-500 bg-yellow-500/10';
-      default:
-        return 'text-gray-400 border-gray-500 bg-gray-500/10';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'text-yellow-400 border-yellow-500 bg-yellow-500/10';
-      case 'approved':
-        return 'text-green-400 border-green-500 bg-green-500/10';
-      case 'rejected':
-        return 'text-red-400 border-red-500 bg-red-500/10';
-      default:
-        return 'text-gray-400 border-gray-500 bg-gray-500/10';
-    }
-  };
-
   return (
     <>
       <Background />
@@ -87,16 +63,12 @@ export default function PendingSignalsPage() {
           title="Pending Signals"
           icon={<ClockIcon />}
           action={
-            <div className="flex gap-2">
+            <div className="filter-tabs">
               {(['pending', 'approved', 'rejected', 'all'] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
-                  className={`px-4 py-1.5 border transition-all duration-300 text-sm ${
-                    filter === status
-                      ? 'border-cyan-500 text-cyan-400 bg-cyan-500/20'
-                      : 'border-green-500/30 text-green-500 hover:border-green-500/50'
-                  }`}
+                  className={`filter-button ${filter === status ? 'active' : ''}`}
                 >
                   {status.toUpperCase()}
                 </button>
@@ -106,136 +78,101 @@ export default function PendingSignalsPage() {
           delay={0.1}
         >
           {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-cyan-400 text-xl animate-pulse">LOADING...</div>
+            <div className="signals-loading">
+              <div className="loading-text">LOADING...</div>
             </div>
           ) : (
-        <div className="grid gap-6">
-          {signals.map((signal) => {
-            const signalData = JSON.parse(signal.signal_data);
-            return (
-              <motion.div
-                key={signal.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-black/50 border border-green-500/30 p-6 relative group hover:border-cyan-500/50 transition-all duration-300"
-              >
-                {/* Scanline effect */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-                <div className="relative z-10">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-2xl font-bold text-cyan-400">
-                        {signal.symbol}
-                      </h3>
-                      <span
-                        className={`px-3 py-1 text-xs border ${getActionColor(
-                          signal.action
-                        )}`}
+            <div className="signals-table-container">
+              <table className="signals-table">
+                <thead>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Action</th>
+                    <th>Type</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                    <th>Created (GMT+7)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {signals.map((signal, index) => {
+                    const signalData = JSON.parse(signal.signal_data);
+                    return (
+                      <motion.tr
+                        key={signal.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: index * 0.05 }}
                       >
-                        {signal.action.toUpperCase()}
-                      </span>
-                      <span
-                        className={`px-3 py-1 text-xs border ${getStatusColor(
-                          signal.status
-                        )}`}
-                      >
-                        {signal.status.toUpperCase()}
-                      </span>
-                      <span className="px-3 py-1 text-xs border border-blue-500 text-blue-400 bg-blue-500/10">
-                        {signal.order_type.toUpperCase()}
-                      </span>
-                    </div>
-
-                    {signal.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(signal.id)}
-                          disabled={approveMutation.isPending}
-                          className="px-6 py-2 border border-green-500 text-green-400 hover:bg-green-500/20 transition-all duration-300 disabled:opacity-50"
-                        >
-                          ✓ APPROVE
-                        </button>
-                        <button
-                          onClick={() => handleReject(signal.id)}
-                          disabled={rejectMutation.isPending}
-                          className="px-6 py-2 border border-red-500 text-red-400 hover:bg-red-500/20 transition-all duration-300 disabled:opacity-50"
-                        >
-                          ✗ REJECT
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Signal Details */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    {signal.price && (
-                      <div>
-                        <div className="text-green-500/50 text-sm">PRICE</div>
-                        <div className="text-green-400 font-bold">
-                          ${signal.price.toLocaleString()}
-                        </div>
-                      </div>
-                    )}
-                    {signal.quantity && (
-                      <div>
-                        <div className="text-green-500/50 text-sm">QUANTITY</div>
-                        <div className="text-green-400 font-bold">
-                          {signal.quantity}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-green-500/50 text-sm">RECEIVED</div>
-                      <div className="text-green-400 text-sm">
-                        {new Date(signal.created_at).toLocaleString()}
-                      </div>
-                    </div>
-                    {signal.reviewed_at && (
-                      <div>
-                        <div className="text-green-500/50 text-sm">REVIEWED</div>
-                        <div className="text-green-400 text-sm">
-                          {new Date(signal.reviewed_at).toLocaleString()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Additional Signal Data */}
-                  {signalData.stopLoss && (
-                    <div className="mb-2">
-                      <span className="text-green-500/50">Stop Loss: </span>
-                      <span className="text-red-400 font-bold">
-                        ${signalData.stopLoss.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                  {signalData.message && (
-                    <div className="mb-2">
-                      <span className="text-green-500/50">Message: </span>
-                      <span className="text-green-400">{signalData.message}</span>
-                    </div>
-                  )}
-
-                  {/* Strategy Info */}
-                  <div className="text-sm text-green-500/50 mt-4">
-                    Signal ID: {signal.signal_id}
-                  </div>
+                        <td className="signal-symbol">{signal.symbol}</td>
+                        <td>
+                          <span className={`action-badge ${signal.action}`}>
+                            {signal.action.toUpperCase()}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="type-badge">
+                            {signal.order_type.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="signal-price">
+                          {signal.price ? `$${signal.price.toLocaleString()}` : '-'}
+                        </td>
+                        <td className="signal-quantity">
+                          {signal.quantity || '-'}
+                        </td>
+                        <td>
+                          <span className={`status-badge ${signal.status}`}>
+                            {signal.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="signal-date">
+                          {formatShortDateTimeGMT7(signal.created_at)}
+                        </td>
+                        <td className="signal-actions">
+                          {signal.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(signal.id)}
+                                disabled={approveMutation.isPending}
+                                className="action-button approve-button"
+                                title="Approve and execute"
+                              >
+                                APPROVE
+                              </button>
+                              <button
+                                onClick={() => handleReject(signal.id)}
+                                disabled={rejectMutation.isPending}
+                                className="action-button reject-button"
+                                title="Reject signal"
+                              >
+                                REJECT
+                              </button>
+                            </>
+                          )}
+                          {signal.status !== 'pending' && (
+                            <span className="no-actions">
+                              {signal.reviewed_at && formatShortDateTimeGMT7(signal.reviewed_at)}
+                            </span>
+                          )}
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {signals.length === 0 && (
+                <div className="empty-state">
+                  <p>
+                    {filter === 'pending'
+                      ? 'No pending signals. All clear!'
+                      : `No ${filter} signals.`}
+                  </p>
                 </div>
-              </motion.div>
-            );
-          })}
-
-          {signals.length === 0 && (
-            <div className="text-center py-16 text-green-500/50">
-              {filter === 'pending'
-                ? 'No pending signals. All clear!'
-                : `No ${filter} signals.`}
+              )}
             </div>
-          )}
-        </div>
           )}
         </Panel>
       </div>

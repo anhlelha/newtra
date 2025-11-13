@@ -1,0 +1,297 @@
+/* Loading State */
+.signals-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.loading-text {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--accent-primary);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Table Container */
+.signals-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Table Styles */
+.signals-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Courier New', monospace;
+}
+
+.signals-table thead {
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.signals-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--accent-primary);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.signals-table tbody tr {
+  border-bottom: 1px solid rgba(0, 255, 159, 0.1);
+  transition: all 0.2s ease;
+}
+
+.signals-table tbody tr:hover {
+  background: rgba(0, 255, 159, 0.05);
+  transform: translateX(4px);
+}
+
+.signals-table td {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Symbol Column */
+.signal-symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+/* Action Badge */
+.action-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.action-badge.buy {
+  background: rgba(0, 255, 159, 0.15);
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+}
+
+.action-badge.sell {
+  background: rgba(255, 69, 96, 0.15);
+  color: #ff4560;
+  border: 1px solid #ff4560;
+}
+
+.action-badge.close {
+  background: rgba(255, 165, 0, 0.15);
+  color: #ffa500;
+  border: 1px solid #ffa500;
+}
+
+/* Type Badge */
+.type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: rgba(100, 100, 100, 0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(100, 100, 100, 0.3);
+}
+
+/* Price and Quantity */
+.signal-price,
+.signal-quantity {
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.status-badge.pending {
+  background: rgba(255, 193, 7, 0.15);
+  color: #ffc107;
+  border: 1px solid #ffc107;
+}
+
+.status-badge.approved {
+  background: rgba(0, 255, 159, 0.15);
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+}
+
+.status-badge.rejected {
+  background: rgba(255, 69, 96, 0.15);
+  color: #ff4560;
+  border: 1px solid #ff4560;
+}
+
+/* Date Column */
+.signal-date {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Action Buttons */
+.signal-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.action-button {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+}
+
+.approve-button {
+  background: rgba(0, 255, 159, 0.15);
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+}
+
+.approve-button:hover:not(:disabled) {
+  background: rgba(0, 255, 159, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 255, 159, 0.3);
+}
+
+.reject-button {
+  background: rgba(255, 69, 96, 0.15);
+  color: #ff4560;
+  border: 1px solid #ff4560;
+}
+
+.reject-button:hover:not(:disabled) {
+  background: rgba(255, 69, 96, 0.25);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 69, 96, 0.3);
+}
+
+.action-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.no-actions {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: 'Courier New', monospace;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  font-size: 14px;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-button {
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Courier New', monospace;
+  text-transform: uppercase;
+}
+
+.filter-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.filter-button.active {
+  background: rgba(0, 255, 159, 0.15);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .signals-table th,
+  .signals-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .action-badge,
+  .type-badge,
+  .status-badge,
+  .action-button {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .signals-table-container {
+    overflow-x: scroll;
+  }
+
+  .signals-table {
+    min-width: 900px;
+  }
+
+  .signal-actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .action-button {
+    width: 100%;
+  }
+}
