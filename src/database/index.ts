@@ -48,8 +48,61 @@ class DatabaseService {
       this.db!.exec(schema);
 
       logger.info('Database schema initialized successfully');
+
+      // Run migrations after schema initialization
+      this.runMigrations();
     } catch (error) {
       logger.error('Failed to initialize database schema', { error });
+      throw error;
+    }
+  }
+
+  private runMigrations() {
+    try {
+      const migrationsDir = path.join(__dirname, 'migrations');
+      if (!fs.existsSync(migrationsDir)) {
+        logger.info('No migrations directory found, skipping migrations');
+        return;
+      }
+
+      const migrationFiles = fs
+        .readdirSync(migrationsDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort();
+
+      if (migrationFiles.length === 0) {
+        logger.info('No migration files found');
+        return;
+      }
+
+      logger.info(`Found ${migrationFiles.length} migration file(s)`);
+
+      for (const file of migrationFiles) {
+        logger.info(`Running migration: ${file}`);
+        const migrationSQL = fs.readFileSync(
+          path.join(migrationsDir, file),
+          'utf-8'
+        );
+
+        try {
+          this.db!.exec(migrationSQL);
+          logger.info(`Migration ${file} completed successfully`);
+        } catch (error: any) {
+          // Ignore "duplicate column" errors (column already exists)
+          if (
+            error.code === 'SQLITE_ERROR' &&
+            error.message.includes('duplicate column')
+          ) {
+            logger.info(`Migration ${file} skipped - column already exists`);
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      logger.info('All migrations completed successfully');
+    } catch (error) {
+      logger.error('Failed to run migrations', { error });
       throw error;
     }
   }
