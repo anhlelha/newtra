@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { apiClient } from '../lib/api';
+import { Background } from './Background';
+import { Panel } from './Panel';
+import { ClockIcon } from './icons';
 
 export default function PendingSignalsPage() {
   const queryClient = useQueryClient();
@@ -76,40 +79,37 @@ export default function PendingSignalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-green-400 p-8 font-mono">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2 text-cyan-400">
-          PENDING_SIGNALS
-        </h1>
-        <p className="text-green-500 opacity-70">
-          Review and approve manual strategy signals
-        </p>
-      </div>
+    <>
+      <Background />
 
-      {/* Filter Tabs */}
-      <div className="mb-8 flex gap-2">
-        {(['pending', 'approved', 'rejected', 'all'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-6 py-2 border transition-all duration-300 ${
-              filter === status
-                ? 'border-cyan-500 text-cyan-400 bg-cyan-500/20'
-                : 'border-green-500/30 text-green-500 hover:border-green-500/50'
-            }`}
-          >
-            {status.toUpperCase()}
-          </button>
-        ))}
-      </div>
-
-      {/* Signals List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-cyan-400 text-xl animate-pulse">LOADING...</div>
-        </div>
-      ) : (
+      <div className="dashboard-container">
+        <Panel
+          title="Pending Signals"
+          icon={<ClockIcon />}
+          action={
+            <div className="flex gap-2">
+              {(['pending', 'approved', 'rejected', 'all'] as const).map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilter(status)}
+                  className={`px-4 py-1.5 border transition-all duration-300 text-sm ${
+                    filter === status
+                      ? 'border-cyan-500 text-cyan-400 bg-cyan-500/20'
+                      : 'border-green-500/30 text-green-500 hover:border-green-500/50'
+                  }`}
+                >
+                  {status.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          }
+          delay={0.1}
+        >
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-cyan-400 text-xl animate-pulse">LOADING...</div>
+            </div>
+          ) : (
         <div className="grid gap-6">
           {signals.map((signal) => {
             const signalData = JSON.parse(signal.signal_data);
@@ -236,7 +236,9 @@ export default function PendingSignalsPage() {
             </div>
           )}
         </div>
-      )}
-    </div>
+          )}
+        </Panel>
+      </div>
+    </>
   );
 }

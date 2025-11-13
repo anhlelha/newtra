@@ -3,6 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../lib/api';
 import type { Strategy, CreateStrategyInput } from '../types';
+import { Background } from './Background';
+import { Panel } from './Panel';
+import { GridIcon } from './icons';
+import './StrategiesPage.css';
 
 export default function StrategiesPage() {
   const queryClient = useQueryClient();
@@ -99,122 +103,110 @@ export default function StrategiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-green-400 p-8 font-mono">
-      {/* Debug indicator */}
-      <div className="fixed top-4 left-4 bg-red-500 text-white px-3 py-1 text-xs z-[100]">
-        Modal: {showCreateModal ? 'OPEN' : 'CLOSED'}
-      </div>
+    <>
+      <Background />
 
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold mb-2 text-cyan-400">
-            STRATEGY_MANAGEMENT
-          </h1>
-          <p className="text-green-500 opacity-70">
-            Configure automatic and manual trading strategies
-          </p>
-        </div>
-        <button
-          onClick={() => {
-            console.log('Create button clicked');
-            resetForm();
-            setEditingStrategy(null);
-            setShowCreateModal(true);
-            console.log('showCreateModal set to true');
-          }}
-          className="px-6 py-3 bg-cyan-500/20 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 relative group"
-        >
-          <span className="relative z-10">+ NEW_STRATEGY</span>
-          <div className="absolute inset-0 bg-cyan-500/10 blur group-hover:blur-md transition-all" />
-        </button>
-      </div>
-
-      {/* Strategies List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-cyan-400 text-xl animate-pulse">LOADING...</div>
-        </div>
-      ) : (
-        <div className="grid gap-6">
-          {strategies.map((strategy) => (
-            <motion.div
-              key={strategy.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-black/50 border border-green-500/30 p-6 relative group hover:border-cyan-500/50 transition-all duration-300"
+      <div className="dashboard-container">
+        {/* Panel with table */}
+        <Panel
+          title="Strategy Management"
+          icon={<GridIcon />}
+          action={
+            <button
+              onClick={() => {
+                resetForm();
+                setEditingStrategy(null);
+                setShowCreateModal(true);
+              }}
+              className="panel-action-button"
             >
-              {/* Scanline effect */}
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-              <div className="flex items-start justify-between relative z-10">
-                <div className="flex-1">
-                  <div className="flex items-center gap-4 mb-3">
-                    <h3 className="text-2xl font-bold text-cyan-400">
-                      {strategy.name}
-                    </h3>
-                    <span
-                      className={`px-3 py-1 text-xs border ${
-                        strategy.type === 'automatic'
-                          ? 'border-green-500 text-green-400 bg-green-500/10'
-                          : 'border-yellow-500 text-yellow-400 bg-yellow-500/10'
-                      }`}
+              + NEW STRATEGY
+            </button>
+          }
+          delay={0.1}
+        >
+          {isLoading ? (
+            <div className="strategies-loading">
+              <div className="loading-text">LOADING...</div>
+            </div>
+          ) : (
+            <div className="strategies-table-container">
+              <table className="strategies-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Description</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {strategies.map((strategy, index) => (
+                    <motion.tr
+                      key={strategy.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: index * 0.05 }}
                     >
-                      {strategy.type.toUpperCase()}
-                    </span>
-                    <span
-                      className={`px-3 py-1 text-xs border ${
-                        strategy.enabled
-                          ? 'border-green-500 text-green-400 bg-green-500/10'
-                          : 'border-red-500 text-red-400 bg-red-500/10'
-                      }`}
-                    >
-                      {strategy.enabled ? 'ENABLED' : 'DISABLED'}
-                    </span>
-                  </div>
-                  {strategy.description && (
-                    <p className="text-green-500/70 mb-4">{strategy.description}</p>
-                  )}
-                  <div className="text-sm text-green-500/50">
-                    Created: {new Date(strategy.created_at).toLocaleString()}
-                  </div>
+                      <td className="strategy-name">{strategy.name}</td>
+                      <td>
+                        <span
+                          className={`type-badge ${strategy.type === 'automatic' ? 'automatic' : 'manual'}`}
+                        >
+                          {strategy.type.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`status-badge ${strategy.enabled ? 'enabled' : 'disabled'}`}
+                        >
+                          {strategy.enabled ? 'ENABLED' : 'DISABLED'}
+                        </span>
+                      </td>
+                      <td className="strategy-description">
+                        {strategy.description || '-'}
+                      </td>
+                      <td className="strategy-date">
+                        {new Date(strategy.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="strategy-actions">
+                        <button
+                          onClick={() => handleToggle(strategy.id)}
+                          className="action-button toggle-button"
+                          title={strategy.enabled ? 'Disable' : 'Enable'}
+                        >
+                          {strategy.enabled ? 'DISABLE' : 'ENABLE'}
+                        </button>
+                        <button
+                          onClick={() => handleEdit(strategy)}
+                          className="action-button edit-button"
+                          title="Edit"
+                        >
+                          EDIT
+                        </button>
+                        <button
+                          onClick={() => handleDelete(strategy.id)}
+                          className="action-button delete-button"
+                          title="Delete"
+                        >
+                          DELETE
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+              {strategies.length === 0 && (
+                <div className="empty-state">
+                  <p>No strategies configured. Create your first strategy to get started.</p>
                 </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleToggle(strategy.id)}
-                    className={`px-4 py-2 border text-sm transition-all duration-300 ${
-                      strategy.enabled
-                        ? 'border-yellow-500 text-yellow-400 hover:bg-yellow-500/20'
-                        : 'border-green-500 text-green-400 hover:bg-green-500/20'
-                    }`}
-                  >
-                    {strategy.enabled ? 'DISABLE' : 'ENABLE'}
-                  </button>
-                  <button
-                    onClick={() => handleEdit(strategy)}
-                    className="px-4 py-2 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/20 transition-all duration-300 text-sm"
-                  >
-                    EDIT
-                  </button>
-                  <button
-                    onClick={() => handleDelete(strategy.id)}
-                    className="px-4 py-2 border border-red-500 text-red-400 hover:bg-red-500/20 transition-all duration-300 text-sm"
-                  >
-                    DELETE
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-
-          {strategies.length === 0 && (
-            <div className="text-center py-16 text-green-500/50">
-              No strategies configured. Create your first strategy to get started.
+              )}
             </div>
           )}
-        </div>
-      )}
+        </Panel>
+      </div>
 
       {/* Create/Edit Modal */}
       <AnimatePresence>
@@ -223,7 +215,7 @@ export default function StrategiesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+            className="modal-overlay"
             onClick={() => {
               setShowCreateModal(false);
               setEditingStrategy(null);
@@ -234,114 +226,107 @@ export default function StrategiesPage() {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-black border border-cyan-500 p-8 max-w-2xl w-full relative"
+              className="modal-content"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-cyan-500/5 blur-xl" />
-
-              <div className="relative z-10">
-                <h2 className="text-3xl font-bold mb-6 text-cyan-400">
-                  {editingStrategy ? 'EDIT_STRATEGY' : 'CREATE_STRATEGY'}
+              <div className="modal-header">
+                <h2 className="modal-title">
+                  {editingStrategy ? 'Edit Strategy' : 'Create Strategy'}
                 </h2>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Name */}
-                  <div>
-                    <label className="block text-green-400 mb-2">NAME</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      className="w-full bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                      placeholder="My Strategy"
-                      required
-                    />
-                  </div>
-
-                  {/* Type */}
-                  <div>
-                    <label className="block text-green-400 mb-2">TYPE</label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          type: e.target.value as 'automatic' | 'manual',
-                        })
-                      }
-                      className="w-full bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                    >
-                      <option value="automatic">Automatic (Execute Immediately)</option>
-                      <option value="manual">Manual (Requires Approval)</option>
-                    </select>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-green-400 mb-2">
-                      DESCRIPTION (Optional)
-                    </label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
-                      }
-                      className="w-full bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors resize-none"
-                      rows={3}
-                      placeholder="Strategy description..."
-                    />
-                  </div>
-
-                  {/* Enabled */}
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      id="enabled"
-                      checked={formData.enabled}
-                      onChange={(e) =>
-                        setFormData({ ...formData, enabled: e.target.checked })
-                      }
-                      className="w-5 h-5"
-                    />
-                    <label htmlFor="enabled" className="text-green-400">
-                      ENABLED
-                    </label>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                      className="flex-1 px-6 py-3 bg-cyan-500/20 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 disabled:opacity-50"
-                    >
-                      {createMutation.isPending || updateMutation.isPending
-                        ? 'SAVING...'
-                        : editingStrategy
-                        ? 'UPDATE'
-                        : 'CREATE'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCreateModal(false);
-                        setEditingStrategy(null);
-                        resetForm();
-                      }}
-                      className="flex-1 px-6 py-3 border border-red-500 text-red-400 hover:bg-red-500/20 transition-all duration-300"
-                    >
-                      CANCEL
-                    </button>
-                  </div>
-                </form>
               </div>
+
+              <form onSubmit={handleSubmit} className="modal-form">
+                {/* Name */}
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    className="form-input"
+                    placeholder="My Strategy"
+                    required
+                  />
+                </div>
+
+                {/* Type */}
+                <div className="form-group">
+                  <label>Type</label>
+                  <select
+                    value={formData.type}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        type: e.target.value as 'automatic' | 'manual',
+                      })
+                    }
+                    className="form-select"
+                  >
+                    <option value="automatic">Automatic (Execute Immediately)</option>
+                    <option value="manual">Manual (Requires Approval)</option>
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div className="form-group">
+                  <label>Description (Optional)</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="form-textarea"
+                    rows={3}
+                    placeholder="Strategy description..."
+                  />
+                </div>
+
+                {/* Enabled */}
+                <div className="form-group-checkbox">
+                  <input
+                    type="checkbox"
+                    id="enabled"
+                    checked={formData.enabled}
+                    onChange={(e) =>
+                      setFormData({ ...formData, enabled: e.target.checked })
+                    }
+                    className="form-checkbox"
+                  />
+                  <label htmlFor="enabled">Enabled</label>
+                </div>
+
+                {/* Buttons */}
+                <div className="modal-buttons">
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending || updateMutation.isPending}
+                    className="modal-button primary"
+                  >
+                    {createMutation.isPending || updateMutation.isPending
+                      ? 'SAVING...'
+                      : editingStrategy
+                      ? 'UPDATE'
+                      : 'CREATE'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setEditingStrategy(null);
+                      resetForm();
+                    }}
+                    className="modal-button secondary"
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

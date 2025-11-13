@@ -32,6 +32,16 @@ export class StrategyService {
   private db = databaseService.getDatabase();
 
   /**
+   * Convert SQLite row to Strategy object (converts enabled from number to boolean)
+   */
+  private toStrategy(row: any): Strategy {
+    return {
+      ...row,
+      enabled: Boolean(row.enabled),
+    };
+  }
+
+  /**
    * Get all strategies
    */
   getAllStrategies(): Strategy[] {
@@ -40,7 +50,7 @@ export class StrategyService {
       ORDER BY created_at DESC
     `);
 
-    return stmt.all() as Strategy[];
+    return (stmt.all() as any[]).map((row) => this.toStrategy(row));
   }
 
   /**
@@ -53,7 +63,7 @@ export class StrategyService {
       ORDER BY created_at DESC
     `);
 
-    return stmt.all(type) as Strategy[];
+    return (stmt.all(type) as any[]).map((row) => this.toStrategy(row));
   }
 
   /**
@@ -66,7 +76,7 @@ export class StrategyService {
       ORDER BY created_at DESC
     `);
 
-    return stmt.all() as Strategy[];
+    return (stmt.all() as any[]).map((row) => this.toStrategy(row));
   }
 
   /**
@@ -78,7 +88,8 @@ export class StrategyService {
       WHERE id = ?
     `);
 
-    return (stmt.get(id) as Strategy) || null;
+    const row = stmt.get(id) as any;
+    return row ? this.toStrategy(row) : null;
   }
 
   /**
@@ -90,7 +101,8 @@ export class StrategyService {
       WHERE name = ?
     `);
 
-    return (stmt.get(name) as Strategy) || null;
+    const row = stmt.get(name) as any;
+    return row ? this.toStrategy(row) : null;
   }
 
   /**
