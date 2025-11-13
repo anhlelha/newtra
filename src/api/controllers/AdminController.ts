@@ -370,6 +370,10 @@ export class AdminController {
         status as any,
         strategyId as string
       );
+      logger.info('Returning pending signals with strategy names', {
+        count: signals.length,
+        sample: signals[0] ? { id: signals[0].id, strategy_name: signals[0].strategy_name } : null
+      });
       res.status(200).json(signals);
     } catch (error) {
       logger.error('Failed to get pending signals', { error });
