@@ -4,6 +4,7 @@ import { TradingViewSignal } from '../api/schemas/webhook.schema';
 import { DuplicateSignalError, ValidationError } from '../utils/errors';
 import databaseService from '../database';
 import config from '../config';
+import { StrategyService } from './StrategyService';
 
 const logger = createModuleLogger('SignalProcessor');
 
@@ -16,10 +17,22 @@ interface SignalRecord {
   received_at: string;
 }
 
+export interface ProcessSignalResult {
+  signalId: string;
+  strategyId: string | null;
+  strategyType: 'automatic' | 'manual' | null;
+  requiresApproval: boolean;
+}
+
 export class SignalProcessor {
   private recentSignals: Map<string, number> = new Map();
+  private strategyService: StrategyService;
 
-  async processSignal(signal: TradingViewSignal): Promise<string> {
+  constructor() {
+    this.strategyService = new StrategyService();
+  }
+
+  async processSignal(signal: TradingViewSignal): Promise<ProcessSignalResult> {
     const signalId = uuidv4();
 
     try {
@@ -36,15 +49,28 @@ export class SignalProcessor {
       // Validate signal
       this.validateSignal(signal);
 
-      // Save signal to database
-      this.saveSignal(signalId, signal);
+      // Determine strategy
+      const { strategyId, strategyType, requiresApproval } = this.determineStrategy(signal);
+
+      // Save signal to database with strategy
+      this.saveSignal(signalId, signal, undefined, strategyId);
 
       // Mark as recent
       this.markAsRecent(signal);
 
-      logger.info('Signal processed successfully', { signalId });
+      logger.info('Signal processed successfully', {
+        signalId,
+        strategyId,
+        strategyType,
+        requiresApproval,
+      });
 
-      return signalId;
+      return {
+        signalId,
+        strategyId,
+        strategyType,
+        requiresApproval,
+      };
     } catch (error) {
       logger.error('Failed to process signal', { signalId, error });
 
@@ -53,6 +79,59 @@ export class SignalProcessor {
 
       throw error;
     }
+  }
+
+  /**
+   * Determine which strategy to use for the signal
+   */
+  private determineStrategy(signal: TradingViewSignal): {
+    strategyId: string | null;
+    strategyType: 'automatic' | 'manual' | null;
+    requiresApproval: boolean;
+  } {
+    let strategy = null;
+
+    // If signal specifies a strategy name, try to find it
+    if (signal.strategy) {
+      strategy = this.strategyService.getStrategyByName(signal.strategy);
+      if (!strategy) {
+        logger.warn('Strategy not found, using default', {
+          strategyName: signal.strategy,
+        });
+      } else if (!strategy.enabled) {
+        logger.warn('Strategy is disabled, using default', {
+          strategyName: signal.strategy,
+        });
+        strategy = null;
+      }
+    }
+
+    // If no strategy specified or not found, use default automatic strategy
+    if (!strategy) {
+      strategy = this.strategyService.getStrategyByName('Default Automatic');
+      if (!strategy) {
+        // Fallback to first enabled automatic strategy
+        const autoStrategies = this.strategyService
+          .getStrategiesByType('automatic')
+          .filter((s) => s.enabled);
+        strategy = autoStrategies[0] || null;
+      }
+    }
+
+    if (!strategy) {
+      logger.warn('No strategy found, signal will be processed without strategy');
+      return {
+        strategyId: null,
+        strategyType: null,
+        requiresApproval: false, // Default to automatic if no strategy
+      };
+    }
+
+    return {
+      strategyId: strategy.id,
+      strategyType: strategy.type,
+      requiresApproval: strategy.type === 'manual',
+    };
   }
 
   validateSignal(signal: TradingViewSignal): void {
@@ -119,16 +198,22 @@ export class SignalProcessor {
     }
   }
 
-  private saveSignal(signalId: string, signal: TradingViewSignal, errorMessage?: string): void {
+  private saveSignal(
+    signalId: string,
+    signal: TradingViewSignal,
+    errorMessage?: string,
+    strategyId?: string | null
+  ): void {
     const db = databaseService.getDatabase();
 
     const stmt = db.prepare(`
-      INSERT INTO signals (id, action, symbol, payload, processed, error_message)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO signals (id, strategy_id, action, symbol, payload, processed, error_message)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       signalId,
+      strategyId || null,
       signal.action,
       signal.symbol,
       JSON.stringify(signal),

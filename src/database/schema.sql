@@ -55,6 +55,36 @@ CREATE TABLE IF NOT EXISTS signals (
   FOREIGN KEY (order_id) REFERENCES orders(id)
 );
 
+-- Strategies table (added via migration)
+CREATE TABLE IF NOT EXISTS strategies (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL CHECK(type IN ('automatic', 'manual')),
+  description TEXT,
+  enabled BOOLEAN DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Pending signals for manual review (added via migration)
+CREATE TABLE IF NOT EXISTS pending_signals (
+  id TEXT PRIMARY KEY,
+  strategy_id TEXT NOT NULL,
+  signal_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  action TEXT NOT NULL CHECK(action IN ('buy', 'sell', 'close')),
+  order_type TEXT NOT NULL,
+  price REAL,
+  quantity REAL,
+  signal_data TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at DATETIME,
+  reviewed_by TEXT,
+  FOREIGN KEY (strategy_id) REFERENCES strategies(id),
+  FOREIGN KEY (signal_id) REFERENCES signals(id)
+);
+
 -- Configuration table
 CREATE TABLE IF NOT EXISTS config (
   key TEXT PRIMARY KEY,
@@ -73,6 +103,13 @@ CREATE INDEX IF NOT EXISTS idx_positions_symbol ON positions(symbol);
 CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
 CREATE INDEX IF NOT EXISTS idx_positions_opened ON positions(opened_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_strategies_enabled ON strategies(enabled);
+CREATE INDEX IF NOT EXISTS idx_strategies_type ON strategies(type);
+
+CREATE INDEX IF NOT EXISTS idx_pending_signals_status ON pending_signals(status);
+CREATE INDEX IF NOT EXISTS idx_pending_signals_strategy ON pending_signals(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_pending_signals_created ON pending_signals(created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_signals_processed ON signals(processed);
 CREATE INDEX IF NOT EXISTS idx_signals_received ON signals(received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_signals_symbol ON signals(symbol);
@@ -82,6 +119,12 @@ CREATE TRIGGER IF NOT EXISTS update_orders_timestamp
 AFTER UPDATE ON orders
 BEGIN
   UPDATE orders SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS update_strategies_timestamp
+AFTER UPDATE ON strategies
+BEGIN
+  UPDATE strategies SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS update_config_timestamp

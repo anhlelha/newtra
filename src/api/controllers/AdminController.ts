@@ -4,6 +4,8 @@ import { BinanceClient } from '../../services/binance/BinanceClient';
 import { OrderManager } from '../../services/OrderManager';
 import { RiskManager } from '../../services/RiskManager';
 import { SignalProcessor } from '../../services/SignalProcessor';
+import { StrategyService } from '../../services/StrategyService';
+import { PendingSignalService } from '../../services/PendingSignalService';
 import databaseService from '../../database';
 import config from '../../config';
 import os from 'os';
@@ -11,12 +13,18 @@ import os from 'os';
 const logger = createModuleLogger('AdminController');
 
 export class AdminController {
+  private strategyService: StrategyService;
+  private pendingSignalService: PendingSignalService;
+
   constructor(
     private binanceClient: BinanceClient,
     private orderManager: OrderManager,
     private riskManager: RiskManager,
     private signalProcessor: SignalProcessor
-  ) {}
+  ) {
+    this.strategyService = new StrategyService();
+    this.pendingSignalService = new PendingSignalService();
+  }
 
   async getHealth(_req: Request, res: Response) {
     try {
@@ -218,6 +226,202 @@ export class AdminController {
     } catch (error) {
       logger.error('Failed to get signals', { error });
       throw error;
+    }
+  }
+
+  // ========== Strategy Management ==========
+
+  async getAllStrategies(_req: Request, res: Response) {
+    try {
+      const strategies = this.strategyService.getAllStrategies();
+      res.status(200).json(strategies);
+    } catch (error) {
+      logger.error('Failed to get strategies', { error });
+      throw error;
+    }
+  }
+
+  async getStrategy(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const strategy = this.strategyService.getStrategyById(id);
+
+      if (!strategy) {
+        res.status(404).json({ error: 'Strategy not found' });
+      }
+
+      res.status(200).json(strategy);
+    } catch (error) {
+      logger.error('Failed to get strategy', { error });
+      throw error;
+    }
+  }
+
+  async createStrategy(req: Request, res: Response) {
+    try {
+      const { name, type, description, enabled } = req.body;
+
+      if (!name || !type) {
+        res.status(400).json({ error: 'Name and type are required' });
+      }
+
+      if (type !== 'automatic' && type !== 'manual') {
+        res.status(400).json({ error: 'Type must be automatic or manual' });
+      }
+
+      const strategy = this.strategyService.createStrategy({
+        name,
+        type,
+        description,
+        enabled,
+      });
+
+      res.status(201).json(strategy);
+    } catch (error: any) {
+      if (error.code === 'SQLITE_CONSTRAINT') {
+        res.status(409).json({ error: 'Strategy name already exists' });
+      }
+      logger.error('Failed to create strategy', { error });
+      throw error;
+    }
+  }
+
+  async updateStrategy(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { name, type, description, enabled } = req.body;
+
+      if (type && type !== 'automatic' && type !== 'manual') {
+        res.status(400).json({ error: 'Type must be automatic or manual' });
+      }
+
+      const strategy = this.strategyService.updateStrategy(id, {
+        name,
+        type,
+        description,
+        enabled,
+      });
+
+      if (!strategy) {
+        res.status(404).json({ error: 'Strategy not found' });
+      }
+
+      res.status(200).json(strategy);
+    } catch (error: any) {
+      if (error.code === 'SQLITE_CONSTRAINT') {
+        res.status(409).json({ error: 'Strategy name already exists' });
+      }
+      logger.error('Failed to update strategy', { error });
+      throw error;
+    }
+  }
+
+  async deleteStrategy(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const deleted = this.strategyService.deleteStrategy(id);
+
+      if (!deleted) {
+        res.status(404).json({ error: 'Strategy not found' });
+      }
+
+      res.status(204).send();
+    } catch (error: any) {
+      if (error.message?.includes('pending signals')) {
+        res.status(400).json({ error: error.message });
+      }
+      logger.error('Failed to delete strategy', { error });
+      throw error;
+    }
+  }
+
+  async toggleStrategy(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const strategy = this.strategyService.toggleStrategy(id);
+
+      if (!strategy) {
+        res.status(404).json({ error: 'Strategy not found' });
+      }
+
+      res.status(200).json(strategy);
+    } catch (error) {
+      logger.error('Failed to toggle strategy', { error });
+      throw error;
+    }
+  }
+
+  // ========== Pending Signals Management ==========
+
+  async getPendingSignals(req: Request, res: Response) {
+    try {
+      const { status, strategyId } = req.query;
+      const signals = this.pendingSignalService.getAllPendingSignals(
+        status as any,
+        strategyId as string
+      );
+      res.status(200).json(signals);
+    } catch (error) {
+      logger.error('Failed to get pending signals', { error });
+      throw error;
+    }
+  }
+
+  async getPendingSignalsCount(_req: Request, res: Response) {
+    try {
+      const count = this.pendingSignalService.getPendingSignalsCount();
+      res.status(200).json({ count });
+    } catch (error) {
+      logger.error('Failed to get pending signals count', { error });
+      throw error;
+    }
+  }
+
+  async approvePendingSignal(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const pendingSignal = this.pendingSignalService.approvePendingSignal(id, 'admin');
+
+      if (!pendingSignal) {
+        return res.status(404).json({ error: 'Pending signal not found' });
+      }
+
+      // Execute the approved signal
+      const signalData = JSON.parse(pendingSignal.signal_data);
+      this.executeApprovedSignalAsync(pendingSignal.signal_id, signalData);
+
+      return res.status(200).json(pendingSignal);
+    } catch (error) {
+      logger.error('Failed to approve pending signal', { error });
+      throw error;
+    }
+  }
+
+  async rejectPendingSignal(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const pendingSignal = this.pendingSignalService.rejectPendingSignal(id, 'admin');
+
+      if (!pendingSignal) {
+        return res.status(404).json({ error: 'Pending signal not found' });
+      }
+
+      return res.status(200).json(pendingSignal);
+    } catch (error) {
+      logger.error('Failed to reject pending signal', { error });
+      throw error;
+    }
+  }
+
+  private async executeApprovedSignalAsync(signalId: string, signal: any) {
+    try {
+      const orderId = await this.orderManager.executeFromSignal(signalId, signal);
+      logger.info('Order executed from approved signal', { signalId, orderId });
+    } catch (error) {
+      logger.error('Failed to execute order from approved signal', {
+        signalId,
+        error,
+      });
     }
   }
 }

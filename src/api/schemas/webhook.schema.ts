@@ -6,6 +6,7 @@ export const tradingViewSignalSchema = z.object({
     invalid_type_error: 'Action must be buy, sell, or close',
   }),
   symbol: z.string().min(1, 'Symbol is required').toUpperCase(),
+  strategy: z.string().optional(), // Strategy name for routing to automatic/manual flow
   orderType: z.enum(['market', 'limit']).default('market'),
   price: z.number().positive('Price must be positive').optional(),
   quantity: z.number().positive('Quantity must be positive').optional(),

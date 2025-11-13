@@ -3,14 +3,19 @@ import { createModuleLogger } from '../../utils/logger';
 import { tradingViewSignalSchema } from '../schemas/webhook.schema';
 import { SignalProcessor } from '../../services/SignalProcessor';
 import { OrderManager } from '../../services/OrderManager';
+import { PendingSignalService } from '../../services/PendingSignalService';
 
 const logger = createModuleLogger('WebhookController');
 
 export class WebhookController {
+  private pendingSignalService: PendingSignalService;
+
   constructor(
     private signalProcessor: SignalProcessor,
     private orderManager: OrderManager
-  ) {}
+  ) {
+    this.pendingSignalService = new PendingSignalService();
+  }
 
   async handleTradingViewWebhook(req: Request, res: Response) {
     try {
@@ -22,21 +27,57 @@ export class WebhookController {
       // Validate payload
       const signal = tradingViewSignalSchema.parse(req.body);
 
-      // Process signal (async - don't wait)
-      const signalId = await this.signalProcessor.processSignal(signal);
+      // Process signal and determine strategy
+      const result = await this.signalProcessor.processSignal(signal);
 
       // Return 200 OK immediately
       res.status(200).json({
         success: true,
-        message: 'Signal received and processing',
-        signalId,
+        message: result.requiresApproval
+          ? 'Signal received and pending manual approval'
+          : 'Signal received and processing',
+        signalId: result.signalId,
+        strategyType: result.strategyType,
+        requiresApproval: result.requiresApproval,
       });
 
-      // Execute order asynchronously (don't wait for response)
-      this.executeOrderAsync(signalId, signal);
+      // Handle based on strategy type
+      if (result.requiresApproval && result.strategyId) {
+        // Manual strategy: create pending signal for review
+        this.createPendingSignalAsync(result.signalId, result.strategyId, signal);
+      } else {
+        // Automatic strategy: execute order immediately
+        this.executeOrderAsync(result.signalId, signal);
+      }
     } catch (error) {
       logger.error('Webhook processing failed', { error });
       throw error;
+    }
+  }
+
+  private async createPendingSignalAsync(
+    signalId: string,
+    strategyId: string,
+    signal: any
+  ) {
+    try {
+      const pendingSignal = this.pendingSignalService.createPendingSignal({
+        strategy_id: strategyId,
+        signal_id: signalId,
+        signal,
+      });
+
+      logger.info('Pending signal created for manual review', {
+        signalId,
+        pendingSignalId: pendingSignal.id,
+        strategyId,
+      });
+    } catch (error) {
+      logger.error('Failed to create pending signal', {
+        signalId,
+        strategyId,
+        error,
+      });
     }
   }
 

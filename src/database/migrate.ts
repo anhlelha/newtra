@@ -1,5 +1,7 @@
 import databaseService from './index';
 import logger from '../utils/logger';
+import fs from 'fs';
+import path from 'path';
 
 async function migrate() {
   try {
@@ -7,6 +9,35 @@ async function migrate() {
 
     // Database is already initialized in DatabaseService constructor
     const db = databaseService.getDatabase();
+
+    // Run migration files from migrations directory
+    const migrationsDir = path.join(__dirname, 'migrations');
+    if (fs.existsSync(migrationsDir)) {
+      const migrationFiles = fs
+        .readdirSync(migrationsDir)
+        .filter((f) => f.endsWith('.sql'))
+        .sort();
+
+      for (const file of migrationFiles) {
+        logger.info(`Running migration: ${file}`);
+        const migrationSQL = fs.readFileSync(
+          path.join(migrationsDir, file),
+          'utf-8'
+        );
+
+        try {
+          db.exec(migrationSQL);
+          logger.info(`Migration ${file} completed successfully`);
+        } catch (error: any) {
+          // Ignore "duplicate column" errors (column already exists)
+          if (error.code === 'SQLITE_ERROR' && error.message.includes('duplicate column')) {
+            logger.info(`Migration ${file} skipped - column already exists`);
+          } else {
+            throw error;
+          }
+        }
+      }
+    }
 
     // Verify tables exist
     const tables = db

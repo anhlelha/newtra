@@ -41,5 +41,47 @@ export function createAdminRouter(controller: AdminController): Router {
     controller.getSignals(req, res).catch(next);
   });
 
+  // Strategy management endpoints
+  router.get('/strategies', (req, res, next) => {
+    controller.getAllStrategies(req, res).catch(next);
+  });
+
+  router.get('/strategies/:id', (req, res, next) => {
+    controller.getStrategy(req, res).catch(next);
+  });
+
+  router.post('/strategies', (req, res, next) => {
+    controller.createStrategy(req, res).catch(next);
+  });
+
+  router.put('/strategies/:id', (req, res, next) => {
+    controller.updateStrategy(req, res).catch(next);
+  });
+
+  router.delete('/strategies/:id', (req, res, next) => {
+    controller.deleteStrategy(req, res).catch(next);
+  });
+
+  router.post('/strategies/:id/toggle', (req, res, next) => {
+    controller.toggleStrategy(req, res).catch(next);
+  });
+
+  // Pending signals management endpoints
+  router.get('/pending-signals', (req, res, next) => {
+    controller.getPendingSignals(req, res).catch(next);
+  });
+
+  router.get('/pending-signals/count', (req, res, next) => {
+    controller.getPendingSignalsCount(req, res).catch(next);
+  });
+
+  router.post('/pending-signals/:id/approve', (req, res, next) => {
+    controller.approvePendingSignal(req, res).catch(next);
+  });
+
+  router.post('/pending-signals/:id/reject', (req, res, next) => {
+    controller.rejectPendingSignal(req, res).catch(next);
+  });
+
   return router;
 }
