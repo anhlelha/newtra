@@ -247,7 +247,7 @@ export class AdminController {
       const strategy = this.strategyService.getStrategyById(id);
 
       if (!strategy) {
-        res.status(404).json({ error: 'Strategy not found' });
+        return res.status(404).json({ error: 'Strategy not found' });
       }
 
       res.status(200).json(strategy);
@@ -262,11 +262,11 @@ export class AdminController {
       const { name, type, description, enabled } = req.body;
 
       if (!name || !type) {
-        res.status(400).json({ error: 'Name and type are required' });
+        return res.status(400).json({ error: 'Name and type are required' });
       }
 
       if (type !== 'automatic' && type !== 'manual') {
-        res.status(400).json({ error: 'Type must be automatic or manual' });
+        return res.status(400).json({ error: 'Type must be automatic or manual' });
       }
 
       const strategy = this.strategyService.createStrategy({
@@ -279,7 +279,7 @@ export class AdminController {
       res.status(201).json(strategy);
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT') {
-        res.status(409).json({ error: 'Strategy name already exists' });
+        return res.status(409).json({ error: 'Strategy name already exists' });
       }
       logger.error('Failed to create strategy', { error });
       throw error;
@@ -292,7 +292,7 @@ export class AdminController {
       const { name, type, description, enabled } = req.body;
 
       if (type && type !== 'automatic' && type !== 'manual') {
-        res.status(400).json({ error: 'Type must be automatic or manual' });
+        return res.status(400).json({ error: 'Type must be automatic or manual' });
       }
 
       const strategy = this.strategyService.updateStrategy(id, {
@@ -303,13 +303,13 @@ export class AdminController {
       });
 
       if (!strategy) {
-        res.status(404).json({ error: 'Strategy not found' });
+        return res.status(404).json({ error: 'Strategy not found' });
       }
 
       res.status(200).json(strategy);
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT') {
-        res.status(409).json({ error: 'Strategy name already exists' });
+        return res.status(409).json({ error: 'Strategy name already exists' });
       }
       logger.error('Failed to update strategy', { error });
       throw error;
@@ -322,13 +322,13 @@ export class AdminController {
       const deleted = this.strategyService.deleteStrategy(id);
 
       if (!deleted) {
-        res.status(404).json({ error: 'Strategy not found' });
+        return res.status(404).json({ error: 'Strategy not found' });
       }
 
       res.status(204).send();
     } catch (error: any) {
       if (error.message?.includes('pending signals')) {
-        res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: error.message });
       }
       logger.error('Failed to delete strategy', { error });
       throw error;
@@ -341,7 +341,7 @@ export class AdminController {
       const strategy = this.strategyService.toggleStrategy(id);
 
       if (!strategy) {
-        res.status(404).json({ error: 'Strategy not found' });
+        return res.status(404).json({ error: 'Strategy not found' });
       }
 
       res.status(200).json(strategy);

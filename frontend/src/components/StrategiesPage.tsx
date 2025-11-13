@@ -86,8 +86,8 @@ export default function StrategiesPage() {
     setFormData({
       name: strategy.name,
       type: strategy.type,
-      description: strategy.description,
-      enabled: strategy.enabled,
+      description: strategy.description || '',
+      enabled: Boolean(strategy.enabled), // Ensure boolean conversion
     });
     setShowCreateModal(true);
   };
