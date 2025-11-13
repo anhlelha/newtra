@@ -241,13 +241,14 @@ export class AdminController {
     }
   }
 
-  async getStrategy(req: Request, res: Response) {
+  async getStrategy(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const strategy = this.strategyService.getStrategyById(id);
 
       if (!strategy) {
-        return res.status(404).json({ error: 'Strategy not found' });
+        res.status(404).json({ error: 'Strategy not found' });
+        return;
       }
 
       res.status(200).json(strategy);
@@ -257,16 +258,18 @@ export class AdminController {
     }
   }
 
-  async createStrategy(req: Request, res: Response) {
+  async createStrategy(req: Request, res: Response): Promise<void> {
     try {
       const { name, type, description, enabled } = req.body;
 
       if (!name || !type) {
-        return res.status(400).json({ error: 'Name and type are required' });
+        res.status(400).json({ error: 'Name and type are required' });
+        return;
       }
 
       if (type !== 'automatic' && type !== 'manual') {
-        return res.status(400).json({ error: 'Type must be automatic or manual' });
+        res.status(400).json({ error: 'Type must be automatic or manual' });
+        return;
       }
 
       const strategy = this.strategyService.createStrategy({
@@ -279,20 +282,22 @@ export class AdminController {
       res.status(201).json(strategy);
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT') {
-        return res.status(409).json({ error: 'Strategy name already exists' });
+        res.status(409).json({ error: 'Strategy name already exists' });
+        return;
       }
       logger.error('Failed to create strategy', { error });
       throw error;
     }
   }
 
-  async updateStrategy(req: Request, res: Response) {
+  async updateStrategy(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { name, type, description, enabled } = req.body;
 
       if (type && type !== 'automatic' && type !== 'manual') {
-        return res.status(400).json({ error: 'Type must be automatic or manual' });
+        res.status(400).json({ error: 'Type must be automatic or manual' });
+        return;
       }
 
       const strategy = this.strategyService.updateStrategy(id, {
@@ -303,45 +308,50 @@ export class AdminController {
       });
 
       if (!strategy) {
-        return res.status(404).json({ error: 'Strategy not found' });
+        res.status(404).json({ error: 'Strategy not found' });
+        return;
       }
 
       res.status(200).json(strategy);
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT') {
-        return res.status(409).json({ error: 'Strategy name already exists' });
+        res.status(409).json({ error: 'Strategy name already exists' });
+        return;
       }
       logger.error('Failed to update strategy', { error });
       throw error;
     }
   }
 
-  async deleteStrategy(req: Request, res: Response) {
+  async deleteStrategy(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const deleted = this.strategyService.deleteStrategy(id);
 
       if (!deleted) {
-        return res.status(404).json({ error: 'Strategy not found' });
+        res.status(404).json({ error: 'Strategy not found' });
+        return;
       }
 
       res.status(204).send();
     } catch (error: any) {
       if (error.message?.includes('pending signals')) {
-        return res.status(400).json({ error: error.message });
+        res.status(400).json({ error: error.message });
+        return;
       }
       logger.error('Failed to delete strategy', { error });
       throw error;
     }
   }
 
-  async toggleStrategy(req: Request, res: Response) {
+  async toggleStrategy(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const strategy = this.strategyService.toggleStrategy(id);
 
       if (!strategy) {
-        return res.status(404).json({ error: 'Strategy not found' });
+        res.status(404).json({ error: 'Strategy not found' });
+        return;
       }
 
       res.status(200).json(strategy);
