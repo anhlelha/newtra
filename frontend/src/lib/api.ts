@@ -62,6 +62,12 @@ export const apiClient = {
   updateConfig: async (config: Record<string, any>): Promise<void> => {
     await api.post('/config', config);
   },
+
+  // Signals
+  getSignals: async (limit: number = 20): Promise<any[]> => {
+    const { data } = await api.get('/signals', { params: { limit } });
+    return data;
+  },
 };
 
 export default api;

@@ -1,4 +1,5 @@
 import express, { Express } from 'express';
+import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import config from './config';
@@ -15,6 +16,18 @@ import { createAdminRouter } from './api/routes/admin';
 
 export function createServer(): Express {
   const app = express();
+
+  // CORS configuration - must be before other middleware
+  app.use(
+    cors({
+      origin: config.server.nodeEnv === 'development'
+        ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173']
+        : process.env.FRONTEND_URL || '*',
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-webhook-secret'],
+    })
+  );
 
   // Security middleware
   app.use(helmet());
@@ -54,7 +67,7 @@ export function createServer(): Express {
 
   // Initialize controllers
   const webhookController = new WebhookController(signalProcessor, orderManager);
-  const adminController = new AdminController(binanceClient, orderManager, riskManager);
+  const adminController = new AdminController(binanceClient, orderManager, riskManager, signalProcessor);
 
   // Setup routes
   app.use('/webhook', createWebhookRouter(webhookController));

@@ -1,4 +1,4 @@
-import Binance from 'binance-api-node';
+import Binance, { OrderType } from 'binance-api-node';
 import { createModuleLogger } from '../../utils/logger';
 import { BinanceApiError } from '../../utils/errors';
 import {
@@ -21,7 +21,7 @@ export class BinanceClient {
   private symbolCache: Map<string, SymbolInfo> = new Map();
   private cacheExpiry: Map<string, number> = new Map();
 
-  constructor(private config: BinanceConfig) {
+  constructor(config: BinanceConfig) {
     const apiUrl = config.testnet
       ? 'https://testnet.binance.vision'
       : 'https://api.binance.com';
@@ -52,7 +52,7 @@ export class BinanceClient {
   async getSymbolInfo(symbol: string): Promise<SymbolInfo> {
     try {
       // Check cache
-      const cached = this.getCachedData(symbol, 3600000); // 1 hour TTL
+      const cached = this.getCachedData<SymbolInfo>(symbol);
       if (cached) {
         return cached;
       }
@@ -139,7 +139,7 @@ export class BinanceClient {
         this.client.order({
           symbol: params.symbol,
           side: params.side,
-          type: 'MARKET',
+          type: OrderType.MARKET,
           quantity: params.quantity.toString(),
         })
       );
@@ -165,7 +165,7 @@ export class BinanceClient {
         this.client.order({
           symbol: params.symbol,
           side: params.side,
-          type: 'LIMIT',
+          type: OrderType.LIMIT,
           quantity: params.quantity.toString(),
           price: params.price.toString(),
           timeInForce: 'GTC',
@@ -193,7 +193,7 @@ export class BinanceClient {
         this.client.order({
           symbol: params.symbol,
           side: params.side,
-          type: 'STOP_LOSS_LIMIT',
+          type: OrderType.STOP_LOSS_LIMIT,
           quantity: params.quantity.toString(),
           price: params.stopPrice.toString(),
           stopPrice: params.stopPrice.toString(),
@@ -326,7 +326,7 @@ export class BinanceClient {
     throw new BinanceApiError(message, details);
   }
 
-  private getCachedData<T>(key: string, maxAge: number): T | null {
+  private getCachedData<T>(key: string): T | null {
     const expiry = this.cacheExpiry.get(key);
     if (expiry && Date.now() < expiry) {
       return this.symbolCache.get(key) as T;

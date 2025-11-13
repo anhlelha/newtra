@@ -37,5 +37,9 @@ export function createAdminRouter(controller: AdminController): Router {
     controller.updateConfig(req, res).catch(next);
   });
 
+  router.get('/signals', (req, res, next) => {
+    controller.getSignals(req, res).catch(next);
+  });
+
   return router;
 }

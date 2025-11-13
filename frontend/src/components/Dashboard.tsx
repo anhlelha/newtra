@@ -6,6 +6,7 @@ import { Panel } from './Panel';
 import { PnLChart } from './PnLChart';
 import { PositionsTable } from './PositionsTable';
 import { OrdersList } from './OrdersList';
+import { SignalsList } from './SignalsList';
 import { TradingControls } from './TradingControls';
 import {
   WalletIcon,
@@ -44,6 +45,12 @@ export const Dashboard = () => {
     queryKey: ['balance'],
     queryFn: () => apiClient.getBalance('USDT'),
     refetchInterval: 10000,
+  });
+
+  const { data: signals = [] } = useQuery({
+    queryKey: ['signals'],
+    queryFn: () => apiClient.getSignals(20),
+    refetchInterval: 5000,
   });
 
   const handleToggleTrading = async () => {
@@ -132,14 +139,24 @@ export const Dashboard = () => {
           </Panel>
 
           <Panel
-            title="Recent Orders"
+            title="TradingView Signals"
             icon={<GridIcon />}
-            action={<a href="#" className="panel-action">View All →</a>}
+            action={<span className="panel-meta">{signals.length} received</span>}
             delay={0.5}
           >
-            <OrdersList orders={orders} />
+            <SignalsList signals={signals} />
           </Panel>
         </div>
+
+        {/* Recent Orders */}
+        <Panel
+          title="Recent Orders"
+          icon={<GridIcon />}
+          action={<a href="#" className="panel-action">View All →</a>}
+          delay={0.55}
+        >
+          <OrdersList orders={orders} />
+        </Panel>
 
         {/* Open Positions */}
         <Panel

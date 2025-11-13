@@ -3,6 +3,7 @@ import { createModuleLogger } from '../../utils/logger';
 import { BinanceClient } from '../../services/binance/BinanceClient';
 import { OrderManager } from '../../services/OrderManager';
 import { RiskManager } from '../../services/RiskManager';
+import { SignalProcessor } from '../../services/SignalProcessor';
 import databaseService from '../../database';
 import config from '../../config';
 import os from 'os';
@@ -13,7 +14,8 @@ export class AdminController {
   constructor(
     private binanceClient: BinanceClient,
     private orderManager: OrderManager,
-    private riskManager: RiskManager
+    private riskManager: RiskManager,
+    private signalProcessor: SignalProcessor
   ) {}
 
   async getHealth(_req: Request, res: Response) {
@@ -200,6 +202,21 @@ export class AdminController {
       });
     } catch (error) {
       logger.error('Failed to update config', { error });
+      throw error;
+    }
+  }
+
+  async getSignals(req: Request, res: Response) {
+    try {
+      const { limit = 20 } = req.query;
+
+      const signals = await this.signalProcessor.getRecentSignals(
+        parseInt(limit as string, 10)
+      );
+
+      res.status(200).json(signals);
+    } catch (error) {
+      logger.error('Failed to get signals', { error });
       throw error;
     }
   }
