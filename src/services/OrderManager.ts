@@ -4,7 +4,7 @@ import { TradingViewSignal } from '../api/schemas/webhook.schema';
 import { BinanceClient } from './binance/BinanceClient';
 import { RiskManager } from './RiskManager';
 import { SignalProcessor } from './SignalProcessor';
-import { InsufficientBalanceError, RiskLimitExceededError } from '../utils/errors';
+import { RiskLimitExceededError } from '../utils/errors';
 import databaseService from '../database';
 
 const logger = createModuleLogger('OrderManager');

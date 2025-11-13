@@ -1,5 +1,4 @@
 import { createModuleLogger } from '../utils/logger';
-import { RiskLimitExceededError } from '../utils/errors';
 import { TradingViewSignal } from '../api/schemas/webhook.schema';
 import { BinanceClient } from './binance/BinanceClient';
 import databaseService from '../database';
