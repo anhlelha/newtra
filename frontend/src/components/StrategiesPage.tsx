@@ -100,6 +100,11 @@ export default function StrategiesPage() {
 
   return (
     <div className="min-h-screen bg-black text-green-400 p-8 font-mono">
+      {/* Debug indicator */}
+      <div className="fixed top-4 left-4 bg-red-500 text-white px-3 py-1 text-xs z-[100]">
+        Modal: {showCreateModal ? 'OPEN' : 'CLOSED'}
+      </div>
+
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
@@ -112,9 +117,11 @@ export default function StrategiesPage() {
         </div>
         <button
           onClick={() => {
+            console.log('Create button clicked');
             resetForm();
             setEditingStrategy(null);
             setShowCreateModal(true);
+            console.log('showCreateModal set to true');
           }}
           className="px-6 py-3 bg-cyan-500/20 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 relative group"
         >
@@ -216,7 +223,7 @@ export default function StrategiesPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
             onClick={() => {
               setShowCreateModal(false);
               setEditingStrategy(null);
