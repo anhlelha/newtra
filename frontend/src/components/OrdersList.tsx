@@ -10,7 +10,10 @@ interface OrdersListProps {
 export const OrdersList = ({ orders }: OrdersListProps) => {
   const formatTime = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'HH:mm:ss');
+      // Convert to GMT+7 (Vietnam timezone)
+      const date = new Date(dateString);
+      const gmt7Date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+      return format(gmt7Date, 'HH:mm:ss');
     } catch {
       return dateString;
     }

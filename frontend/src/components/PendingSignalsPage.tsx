@@ -98,9 +98,7 @@ export default function PendingSignalsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {signals.map((signal, index) => {
-                    const signalData = JSON.parse(signal.signal_data);
-                    return (
+                  {signals.map((signal, index) => (
                       <motion.tr
                         key={signal.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -163,8 +161,7 @@ export default function PendingSignalsPage() {
                           )}
                         </td>
                       </motion.tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
               {signals.length === 0 && (

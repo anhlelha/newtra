@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { format } from 'date-fns';
 import type { Position } from '../types';
 import './PositionsTable.css';
 
@@ -15,6 +16,17 @@ export const PositionsTable = ({ positions, onClose }: PositionsTableProps) => {
     return `${sign}${formatPrice(pnl)}${percentStr}`;
   };
 
+  const formatTime = (dateString: string) => {
+    try {
+      // Convert to GMT+7 (Vietnam timezone)
+      const date = new Date(dateString);
+      const gmt7Date = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+      return format(gmt7Date, 'HH:mm:ss');
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
     <div className="positions-table-container">
       <table className="positions-table">
@@ -26,6 +38,7 @@ export const PositionsTable = ({ positions, onClose }: PositionsTableProps) => {
             <th>Current Price</th>
             <th>Quantity</th>
             <th>P&L</th>
+            <th>Time</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -58,6 +71,7 @@ export const PositionsTable = ({ positions, onClose }: PositionsTableProps) => {
                     ? formatPnL(position.unrealizedPnL, pnlPercent)
                     : '-'}
                 </td>
+                <td className="time-cell">{formatTime(position.opened_at)}</td>
                 <td>
                   {onClose && (
                     <button

@@ -153,21 +153,20 @@ export const Dashboard = () => {
             <PnLChart />
           </Panel>
 
-          <Panel
-            title="TradingView Signals"
-            icon={<GridIcon />}
-            action={<span className="panel-meta">{signals.length} received</span>}
-            delay={0.5}
-          >
-            <SignalsList signals={signals} />
+          <Panel title="System Controls" icon={<ControlIcon />} delay={0.5}>
+            <TradingControls
+              tradingEnabled={status?.tradingEnabled || false}
+              onToggleTrading={handleToggleTrading}
+              onEmergencyStop={handleEmergencyStop}
+            />
           </Panel>
         </div>
 
-        {/* Recent Orders */}
+        {/* Order List */}
         <Panel
-          title="Recent Orders"
-          icon={<GridIcon />}
-          action={<a href="#" className="panel-action">View All →</a>}
+          title="Order List"
+          icon={<TableIcon />}
+          action={<span className="panel-meta">{orders.length} total</span>}
           delay={0.55}
         >
           <OrdersList orders={orders} />
@@ -183,13 +182,14 @@ export const Dashboard = () => {
           <PositionsTable positions={positions} />
         </Panel>
 
-        {/* Trading Controls */}
-        <Panel title="System Controls" icon={<ControlIcon />} delay={0.7}>
-          <TradingControls
-            tradingEnabled={status?.tradingEnabled || false}
-            onToggleTrading={handleToggleTrading}
-            onEmergencyStop={handleEmergencyStop}
-          />
+        {/* Trading Signals History */}
+        <Panel
+          title="Trading Signals"
+          icon={<GridIcon />}
+          action={<span className="panel-meta">{signals.length} received</span>}
+          delay={0.65}
+        >
+          <SignalsList signals={signals} />
         </Panel>
 
         {/* Footer */}
