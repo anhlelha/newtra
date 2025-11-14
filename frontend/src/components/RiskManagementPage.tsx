@@ -1,12 +1,69 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '../lib/api';
 import type { RiskConfig } from '../types';
+import { Background } from './Background';
+import { Panel } from './Panel';
+import { GridIcon } from './icons';
+import './RiskManagementPage.css';
+
+interface RiskParameter {
+  key: keyof RiskConfig;
+  name: string;
+  description: string;
+  format: (value: any) => string;
+  valueClass: (value: any) => string;
+}
+
+const riskParameters: RiskParameter[] = [
+  {
+    key: 'defaultPositionSizePercent',
+    name: 'Default Position Size',
+    description: 'Percentage of balance used for each trade',
+    format: (value: number) => `${value}%`,
+    valueClass: () => 'value-normal',
+  },
+  {
+    key: 'maxPositionSizePercent',
+    name: 'Max Position Size',
+    description: 'Maximum position size allowed',
+    format: (value: number) => `${value}%`,
+    valueClass: (value: number) => (value > 10 ? 'value-warning' : 'value-normal'),
+  },
+  {
+    key: 'maxTotalExposurePercent',
+    name: 'Max Total Exposure',
+    description: 'Maximum total exposure across all positions',
+    format: (value: number) => `${value}%`,
+    valueClass: (value: number) => (value > 50 ? 'value-danger' : 'value-warning'),
+  },
+  {
+    key: 'maxDailyLoss',
+    name: 'Max Daily Loss',
+    description: 'Trading stops when daily loss exceeds this amount',
+    format: (value: number) => `$${value.toLocaleString()}`,
+    valueClass: (value: number) => (value > 1000 ? 'value-danger' : 'value-warning'),
+  },
+  {
+    key: 'enableStopLoss',
+    name: 'Enable Stop Loss',
+    description: 'Automatically set stop loss on all positions',
+    format: (value: boolean) => value ? 'ENABLED' : 'DISABLED',
+    valueClass: () => '',
+  },
+  {
+    key: 'defaultStopLossPercent',
+    name: 'Default Stop Loss',
+    description: 'Percentage below entry price for stop loss',
+    format: (value: number) => `${value}%`,
+    valueClass: () => 'value-normal',
+  },
+];
 
 export default function RiskManagementPage() {
   const queryClient = useQueryClient();
-  const [isEditing, setIsEditing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<RiskConfig | null>(null);
 
   // Fetch risk config
@@ -21,7 +78,7 @@ export default function RiskManagementPage() {
     mutationFn: apiClient.updateRiskConfig,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['riskConfig'] });
-      setIsEditing(false);
+      setShowEditModal(false);
       setFormData(null);
     },
   });
@@ -29,16 +86,12 @@ export default function RiskManagementPage() {
   const handleEdit = () => {
     if (riskConfig) {
       setFormData({ ...riskConfig });
-      setIsEditing(true);
+      setShowEditModal(true);
     }
   };
 
-  const handleCancel = () => {
-    setIsEditing(false);
-    setFormData(null);
-  };
-
-  const handleSave = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!formData) return;
 
     updateMutation.mutate({
@@ -51,366 +104,270 @@ export default function RiskManagementPage() {
     });
   };
 
-  const displayData = isEditing && formData ? formData : riskConfig;
+  const resetForm = () => {
+    setFormData(null);
+  };
 
   return (
-    <div className="min-h-screen bg-black text-green-400 p-8 font-mono">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold mb-2 text-cyan-400">
-            RISK_MANAGEMENT
-          </h1>
-          <p className="text-green-500 opacity-70">
-            Configure risk parameters and position sizing
-          </p>
-        </div>
+    <>
+      <Background />
 
-        {!isEditing ? (
-          <button
-            onClick={handleEdit}
-            className="px-6 py-3 bg-cyan-500/20 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/30 transition-all duration-300 relative group"
-          >
-            <span className="relative z-10">⚙ EDIT_SETTINGS</span>
-            <div className="absolute inset-0 bg-cyan-500/10 blur group-hover:blur-md transition-all" />
-          </button>
-        ) : (
-          <div className="flex gap-2">
+      <div className="dashboard-container">
+        {/* Panel with table */}
+        <Panel
+          title="Risk Management"
+          icon={<GridIcon />}
+          action={
             <button
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              className="px-6 py-3 bg-green-500/20 border border-green-500 text-green-400 hover:bg-green-500/30 transition-all duration-300 disabled:opacity-50"
+              onClick={handleEdit}
+              className="panel-action-button"
             >
-              {updateMutation.isPending ? 'SAVING...' : '✓ SAVE'}
+              ⚙ EDIT SETTINGS
             </button>
-            <button
-              onClick={handleCancel}
-              className="px-6 py-3 border border-red-500 text-red-400 hover:bg-red-500/20 transition-all duration-300"
-            >
-              ✗ CANCEL
-            </button>
-          </div>
-        )}
+          }
+          delay={0.1}
+        >
+          {isLoading ? (
+            <div className="risk-loading">
+              <div className="loading-text">LOADING...</div>
+            </div>
+          ) : (
+            <>
+              <div className="risk-table-container">
+                <table className="risk-table">
+                  <thead>
+                    <tr>
+                      <th>Parameter</th>
+                      <th>Current Value</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {riskParameters.map((param, index) => (
+                      <motion.tr
+                        key={param.key}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.4, delay: index * 0.05 }}
+                      >
+                        <td className="risk-param-name">{param.name}</td>
+                        <td>
+                          {param.key === 'enableStopLoss' ? (
+                            <span
+                              className={`risk-status-badge ${
+                                riskConfig?.[param.key] ? 'enabled' : 'disabled'
+                              }`}
+                            >
+                              {param.format(riskConfig?.[param.key])}
+                            </span>
+                          ) : (
+                            <span
+                              className={`risk-param-value ${param.valueClass(
+                                riskConfig?.[param.key]
+                              )}`}
+                            >
+                              {param.format(riskConfig?.[param.key])}
+                            </span>
+                          )}
+                        </td>
+                        <td className="risk-param-description">
+                          {param.description}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Warning Message */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="risk-warning"
+              >
+                <div className="risk-warning-icon">⚠</div>
+                <div className="risk-warning-content">
+                  <h3>RISK WARNING</h3>
+                  <p>
+                    These settings directly affect your trading risk. Changes take effect
+                    immediately and apply to all new trades. Make sure you understand the
+                    implications before modifying risk parameters.
+                  </p>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </Panel>
       </div>
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-cyan-400 text-xl animate-pulse">LOADING...</div>
-        </div>
-      ) : (
-        <div className="grid gap-6">
-          {/* Position Sizing Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-black/50 border border-green-500/30 p-6 relative group hover:border-cyan-500/50 transition-all duration-300"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-            <div className="relative z-10">
-              <h2 className="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-3">
-                <span className="text-green-500">■</span>
-                POSITION SIZING
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Default Position Size */}
-                <div>
-                  <label className="block text-green-400 mb-2 text-sm">
-                    DEFAULT POSITION SIZE (%)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        value={formData?.defaultPositionSizePercent || 0}
-                        onChange={(e) =>
-                          setFormData((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  defaultPositionSizePercent: parseFloat(
-                                    e.target.value
-                                  ),
-                                }
-                              : null
-                          )
-                        }
-                        className="flex-1 bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                      />
-                    ) : (
-                      <div className="flex-1 text-3xl font-bold text-green-400">
-                        {displayData?.defaultPositionSizePercent}%
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    Percentage of balance used for each trade
-                  </p>
-                </div>
-
-                {/* Max Position Size */}
-                <div>
-                  <label className="block text-green-400 mb-2 text-sm">
-                    MAX POSITION SIZE (%)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        value={formData?.maxPositionSizePercent || 0}
-                        onChange={(e) =>
-                          setFormData((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  maxPositionSizePercent: parseFloat(
-                                    e.target.value
-                                  ),
-                                }
-                              : null
-                          )
-                        }
-                        className="flex-1 bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                      />
-                    ) : (
-                      <div className="flex-1 text-3xl font-bold text-yellow-400">
-                        {displayData?.maxPositionSizePercent}%
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    Maximum position size allowed
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Exposure & Loss Limits Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-black/50 border border-green-500/30 p-6 relative group hover:border-cyan-500/50 transition-all duration-300"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-            <div className="relative z-10">
-              <h2 className="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-3">
-                <span className="text-red-500">■</span>
-                EXPOSURE & LOSS LIMITS
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Max Total Exposure */}
-                <div>
-                  <label className="block text-green-400 mb-2 text-sm">
-                    MAX TOTAL EXPOSURE (%)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="100"
-                        value={formData?.maxTotalExposurePercent || 0}
-                        onChange={(e) =>
-                          setFormData((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  maxTotalExposurePercent: parseFloat(
-                                    e.target.value
-                                  ),
-                                }
-                              : null
-                          )
-                        }
-                        className="flex-1 bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                      />
-                    ) : (
-                      <div className="flex-1 text-3xl font-bold text-red-400">
-                        {displayData?.maxTotalExposurePercent}%
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    Maximum total exposure across all positions
-                  </p>
-                </div>
-
-                {/* Max Daily Loss */}
-                <div>
-                  <label className="block text-green-400 mb-2 text-sm">
-                    MAX DAILY LOSS (USD)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="10"
-                        min="0"
-                        value={formData?.maxDailyLoss || 0}
-                        onChange={(e) =>
-                          setFormData((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  maxDailyLoss: parseFloat(e.target.value),
-                                }
-                              : null
-                          )
-                        }
-                        className="flex-1 bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                      />
-                    ) : (
-                      <div className="flex-1 text-3xl font-bold text-red-400">
-                        ${displayData?.maxDailyLoss.toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    Trading stops when daily loss exceeds this amount
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Stop Loss Configuration Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-black/50 border border-green-500/30 p-6 relative group hover:border-cyan-500/50 transition-all duration-300"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-            <div className="relative z-10">
-              <h2 className="text-2xl font-bold text-cyan-400 mb-6 flex items-center gap-3">
-                <span className="text-yellow-500">■</span>
-                STOP LOSS CONFIGURATION
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Enable Stop Loss */}
-                <div>
-                  <label className="block text-green-400 mb-2 text-sm">
-                    ENABLE STOP LOSS
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {isEditing ? (
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData?.enableStopLoss || false}
-                          onChange={(e) =>
-                            setFormData((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    enableStopLoss: e.target.checked,
-                                  }
-                                : null
-                            )
-                          }
-                          className="w-6 h-6"
-                        />
-                        <span className="text-green-400">
-                          {formData?.enableStopLoss ? 'ENABLED' : 'DISABLED'}
-                        </span>
-                      </label>
-                    ) : (
-                      <div
-                        className={`text-2xl font-bold ${
-                          displayData?.enableStopLoss
-                            ? 'text-green-400'
-                            : 'text-red-400'
-                        }`}
-                      >
-                        {displayData?.enableStopLoss ? '✓ ENABLED' : '✗ DISABLED'}
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    Automatically set stop loss on all positions
-                  </p>
-                </div>
-
-                {/* Default Stop Loss % */}
-                <div>
-                  <label className="block text-green-400 mb-2 text-sm">
-                    DEFAULT STOP LOSS (%)
-                  </label>
-                  <div className="flex items-center gap-4">
-                    {isEditing ? (
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        value={formData?.defaultStopLossPercent || 0}
-                        onChange={(e) =>
-                          setFormData((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  defaultStopLossPercent: parseFloat(
-                                    e.target.value
-                                  ),
-                                }
-                              : null
-                          )
-                        }
-                        className="flex-1 bg-black border border-green-500/50 text-green-400 px-4 py-3 focus:border-cyan-500 focus:outline-none transition-colors"
-                        disabled={!formData?.enableStopLoss}
-                      />
-                    ) : (
-                      <div className="flex-1 text-3xl font-bold text-yellow-400">
-                        {displayData?.defaultStopLossPercent}%
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-green-500/50 text-xs mt-2">
-                    Percentage below entry price for stop loss
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Warning Message */}
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {showEditModal && formData && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="border border-yellow-500/30 bg-yellow-500/5 p-4"
+            exit={{ opacity: 0 }}
+            className="modal-overlay"
+            onClick={() => {
+              setShowEditModal(false);
+              resetForm();
+            }}
           >
-            <div className="flex items-start gap-3">
-              <span className="text-yellow-500 text-2xl">⚠</span>
-              <div>
-                <h3 className="text-yellow-400 font-bold mb-1">
-                  RISK WARNING
-                </h3>
-                <p className="text-yellow-500/70 text-sm">
-                  These settings directly affect your trading risk. Changes take effect
-                  immediately and apply to all new trades. Make sure you understand the
-                  implications before modifying risk parameters.
-                </p>
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2 className="modal-title">Edit Risk Settings</h2>
               </div>
-            </div>
+
+              <form onSubmit={handleSubmit} className="modal-form">
+                {/* Default Position Size */}
+                <div className="form-group">
+                  <label>Default Position Size (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.defaultPositionSizePercent}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        defaultPositionSizePercent: parseFloat(e.target.value),
+                      })
+                    }
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {/* Max Position Size */}
+                <div className="form-group">
+                  <label>Max Position Size (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.maxPositionSizePercent}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxPositionSizePercent: parseFloat(e.target.value),
+                      })
+                    }
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {/* Max Total Exposure */}
+                <div className="form-group">
+                  <label>Max Total Exposure (%)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    value={formData.maxTotalExposurePercent}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxTotalExposurePercent: parseFloat(e.target.value),
+                      })
+                    }
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {/* Max Daily Loss */}
+                <div className="form-group">
+                  <label>Max Daily Loss (USD)</label>
+                  <input
+                    type="number"
+                    step="10"
+                    min="0"
+                    value={formData.maxDailyLoss}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        maxDailyLoss: parseFloat(e.target.value),
+                      })
+                    }
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {/* Enable Stop Loss */}
+                <div className="form-group-checkbox">
+                  <input
+                    type="checkbox"
+                    id="enableStopLoss"
+                    checked={formData.enableStopLoss}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        enableStopLoss: e.target.checked,
+                      })
+                    }
+                    className="form-checkbox"
+                  />
+                  <label htmlFor="enableStopLoss">Enable Stop Loss</label>
+                </div>
+
+                {/* Default Stop Loss % */}
+                <div className="form-group">
+                  <label>Default Stop Loss (%)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.defaultStopLossPercent}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        defaultStopLossPercent: parseFloat(e.target.value),
+                      })
+                    }
+                    className="form-input"
+                    disabled={!formData.enableStopLoss}
+                    required={formData.enableStopLoss}
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="modal-buttons">
+                  <button
+                    type="submit"
+                    disabled={updateMutation.isPending}
+                    className="modal-button primary"
+                  >
+                    {updateMutation.isPending ? 'SAVING...' : 'SAVE'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      resetForm();
+                    }}
+                    className="modal-button secondary"
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
-    </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
