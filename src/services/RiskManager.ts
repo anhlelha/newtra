@@ -34,8 +34,10 @@ export class RiskManager {
       }
     };
 
+    const enabled = getConfigValue('trading.enabled', config.trading.enabled);
+
     return {
-      enabled: getConfigValue('trading.enabled', config.trading.enabled),
+      enabled: typeof enabled === 'boolean' ? enabled : enabled === 'true',
       maxPositionSizePercent: parseFloat(getConfigValue('trading.maxPositionSizePercent', config.trading.maxPositionSizePercent)),
       maxTotalExposurePercent: parseFloat(getConfigValue('trading.maxTotalExposurePercent', config.trading.maxTotalExposurePercent)),
       maxDailyLoss: parseFloat(getConfigValue('trading.maxDailyLoss', config.trading.maxDailyLoss)),
