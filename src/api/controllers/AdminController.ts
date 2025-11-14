@@ -214,6 +214,124 @@ export class AdminController {
     }
   }
 
+  async getRiskConfig(_req: Request, res: Response) {
+    try {
+      const db = databaseService.getDatabase();
+      const stmt = db.prepare(`
+        SELECT key, value
+        FROM config
+        WHERE key LIKE 'trading.%'
+      `);
+
+      const configRows = stmt.all() as Array<{ key: string; value: string }>;
+
+      const riskConfig = {
+        defaultPositionSizePercent: config.trading.defaultPositionSizePercent,
+        maxPositionSizePercent: config.trading.maxPositionSizePercent,
+        maxTotalExposurePercent: config.trading.maxTotalExposurePercent,
+        maxDailyLoss: config.trading.maxDailyLoss,
+        enableStopLoss: config.trading.enableStopLoss,
+        defaultStopLossPercent: config.trading.defaultStopLossPercent,
+        enabled: config.trading.enabled,
+      };
+
+      // Override with database values if they exist
+      for (const row of configRows) {
+        const value = JSON.parse(row.value);
+        switch (row.key) {
+          case 'trading.defaultPositionSizePercent':
+            riskConfig.defaultPositionSizePercent = value;
+            break;
+          case 'trading.maxPositionSizePercent':
+            riskConfig.maxPositionSizePercent = value;
+            break;
+          case 'trading.maxTotalExposurePercent':
+            riskConfig.maxTotalExposurePercent = value;
+            break;
+          case 'trading.maxDailyLoss':
+            riskConfig.maxDailyLoss = value;
+            break;
+          case 'trading.enableStopLoss':
+            riskConfig.enableStopLoss = value;
+            break;
+          case 'trading.defaultStopLossPercent':
+            riskConfig.defaultStopLossPercent = value;
+            break;
+          case 'trading.enabled':
+            riskConfig.enabled = value;
+            break;
+        }
+      }
+
+      res.status(200).json(riskConfig);
+    } catch (error) {
+      logger.error('Failed to get risk config', { error });
+      throw error;
+    }
+  }
+
+  async updateRiskConfig(req: Request, res: Response) {
+    try {
+      const {
+        defaultPositionSizePercent,
+        maxPositionSizePercent,
+        maxTotalExposurePercent,
+        maxDailyLoss,
+        enableStopLoss,
+        defaultStopLossPercent,
+      } = req.body;
+
+      const db = databaseService.getDatabase();
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO config (key, value)
+        VALUES (?, ?)
+      `);
+
+      const updates: Record<string, any> = {};
+
+      if (defaultPositionSizePercent !== undefined) {
+        stmt.run('trading.defaultPositionSizePercent', JSON.stringify(defaultPositionSizePercent));
+        updates.defaultPositionSizePercent = defaultPositionSizePercent;
+      }
+
+      if (maxPositionSizePercent !== undefined) {
+        stmt.run('trading.maxPositionSizePercent', JSON.stringify(maxPositionSizePercent));
+        updates.maxPositionSizePercent = maxPositionSizePercent;
+      }
+
+      if (maxTotalExposurePercent !== undefined) {
+        stmt.run('trading.maxTotalExposurePercent', JSON.stringify(maxTotalExposurePercent));
+        updates.maxTotalExposurePercent = maxTotalExposurePercent;
+      }
+
+      if (maxDailyLoss !== undefined) {
+        stmt.run('trading.maxDailyLoss', JSON.stringify(maxDailyLoss));
+        updates.maxDailyLoss = maxDailyLoss;
+      }
+
+      if (enableStopLoss !== undefined) {
+        stmt.run('trading.enableStopLoss', JSON.stringify(enableStopLoss));
+        updates.enableStopLoss = enableStopLoss;
+      }
+
+      if (defaultStopLossPercent !== undefined) {
+        stmt.run('trading.defaultStopLossPercent', JSON.stringify(defaultStopLossPercent));
+        updates.defaultStopLossPercent = defaultStopLossPercent;
+      }
+
+      logger.info('Risk configuration updated', { updates });
+
+      res.status(200).json({
+        success: true,
+        message: 'Risk configuration updated successfully',
+        updates,
+      });
+    } catch (error) {
+      logger.error('Failed to update risk config', { error });
+      throw error;
+    }
+  }
+
   async getSignals(req: Request, res: Response) {
     try {
       const { limit = 20 } = req.query;

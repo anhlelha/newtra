@@ -8,6 +8,8 @@ import type {
   Strategy,
   PendingSignal,
   CreateStrategyInput,
+  RiskConfig,
+  UpdateRiskConfigInput,
   UpdateStrategyInput,
 } from '../types';
 
@@ -130,6 +132,17 @@ export const apiClient = {
 
   rejectPendingSignal: async (id: string): Promise<PendingSignal> => {
     const { data} = await api.post(`/pending-signals/${id}/reject`);
+    return data;
+  },
+
+  // Risk Config
+  getRiskConfig: async (): Promise<RiskConfig> => {
+    const { data } = await api.get('/risk-config');
+    return data;
+  },
+
+  updateRiskConfig: async (config: UpdateRiskConfigInput): Promise<{ success: boolean; message: string; updates: any }> => {
+    const { data } = await api.put('/risk-config', config);
     return data;
   },
 };

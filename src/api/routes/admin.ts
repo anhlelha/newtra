@@ -37,6 +37,15 @@ export function createAdminRouter(controller: AdminController): Router {
     controller.updateConfig(req, res).catch(next);
   });
 
+  // Risk management endpoints
+  router.get('/risk-config', (req, res, next) => {
+    controller.getRiskConfig(req, res).catch(next);
+  });
+
+  router.put('/risk-config', (req, res, next) => {
+    controller.updateRiskConfig(req, res).catch(next);
+  });
+
   router.get('/signals', (req, res, next) => {
     controller.getSignals(req, res).catch(next);
   });

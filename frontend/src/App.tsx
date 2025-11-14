@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { Dashboard } from './components/Dashboard';
 import StrategiesPage from './components/StrategiesPage';
 import PendingSignalsPage from './components/PendingSignalsPage';
+import RiskManagementPage from './components/RiskManagementPage';
 import { Navigation } from './components/Navigation';
 import { apiClient } from './lib/api';
 
@@ -17,7 +18,7 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'strategies' | 'pending-signals'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'strategies' | 'pending-signals' | 'risk-management'>('dashboard');
 
   // Fetch pending count for navigation badge
   const { data: pendingCount } = useQuery({
@@ -37,6 +38,7 @@ function AppContent() {
       {currentPage === 'dashboard' && <Dashboard />}
       {currentPage === 'strategies' && <StrategiesPage />}
       {currentPage === 'pending-signals' && <PendingSignalsPage />}
+      {currentPage === 'risk-management' && <RiskManagementPage />}
     </>
   );
 }

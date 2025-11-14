@@ -119,3 +119,22 @@ export interface UpdateStrategyInput {
   description?: string;
   enabled?: boolean;
 }
+
+export interface RiskConfig {
+  defaultPositionSizePercent: number;
+  maxPositionSizePercent: number;
+  maxTotalExposurePercent: number;
+  maxDailyLoss: number;
+  enableStopLoss: boolean;
+  defaultStopLossPercent: number;
+  enabled: boolean;
+}
+
+export interface UpdateRiskConfigInput {
+  defaultPositionSizePercent?: number;
+  maxPositionSizePercent?: number;
+  maxTotalExposurePercent?: number;
+  maxDailyLoss?: number;
+  enableStopLoss?: boolean;
+  defaultStopLossPercent?: number;
+}

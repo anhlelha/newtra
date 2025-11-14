@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 
 interface NavigationProps {
-  currentPage: 'dashboard' | 'strategies' | 'pending-signals';
-  onNavigate: (page: 'dashboard' | 'strategies' | 'pending-signals') => void;
+  currentPage: 'dashboard' | 'strategies' | 'pending-signals' | 'risk-management';
+  onNavigate: (page: 'dashboard' | 'strategies' | 'pending-signals' | 'risk-management') => void;
   pendingCount?: number;
 }
 
@@ -11,6 +11,7 @@ export function Navigation({ currentPage, onNavigate, pendingCount = 0 }: Naviga
     { id: 'dashboard' as const, label: 'DASHBOARD', icon: '▶', badge: undefined },
     { id: 'strategies' as const, label: 'STRATEGIES', icon: '⚡', badge: undefined },
     { id: 'pending-signals' as const, label: 'PENDING_SIGNALS', icon: '⏱', badge: pendingCount },
+    { id: 'risk-management' as const, label: 'RISK_MANAGEMENT', icon: '⚠', badge: undefined },
   ];
 
   return (
