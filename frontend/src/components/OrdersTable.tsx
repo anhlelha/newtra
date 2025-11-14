@@ -73,7 +73,7 @@ export const OrdersTable = ({ orders }: OrdersTableProps) => {
             >
               <td className="symbol-cell">{order.symbol}</td>
               <td className="strategy-cell">
-                {order.strategy_name || <span className="no-strategy">Default</span>}
+                {order.strategy_name || <span className="no-strategy">N/A</span>}
               </td>
               <td>
                 <span className={`side-badge ${order.side.toLowerCase()}`}>
