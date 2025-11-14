@@ -27,6 +27,9 @@ export class OrderManager {
   ) {}
 
   async executeFromSignal(signalId: string, signal: TradingViewSignal, strategyId?: string | null, bypassEnabledCheck: boolean = false): Promise<string> {
+    const orderId = uuidv4();
+    const db = databaseService.getDatabase();
+
     try {
       logger.info('Executing order from signal', { signalId, signal, strategyId, bypassEnabledCheck });
 
@@ -38,17 +41,43 @@ export class OrderManager {
       const riskPassed = riskCheck.allowed;
 
       if (!riskPassed) {
+        // Create REJECTED order record so it's visible in UI
+        const side = this.getOrderSide(signal);
+        const stmt = db.prepare(`
+          INSERT INTO orders (
+            id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        stmt.run(
+          orderId,
+          signal.symbol,
+          side,
+          signal.orderType?.toUpperCase() || 'MARKET',
+          quantity,
+          signal.price || null,
+          'REJECTED',
+          riskCheck.reason,
+          strategyId || null,
+          0
+        );
+
+        // Update signal status with order ID and error
+        await this.signalProcessor.updateSignalStatus(signalId, orderId, riskCheck.reason);
+
+        logger.warn('Order rejected by risk check', { orderId, signalId, reason: riskCheck.reason });
+
         throw new RiskLimitExceededError(riskCheck.reason!);
       }
 
       // Determine order side
       const side = this.getOrderSide(signal);
 
-      // Execute order based on type
-      let orderId: string;
+      // Execute order based on type (will create its own order ID and return it)
+      let executedOrderId: string;
 
       if (signal.orderType === 'market') {
-        orderId = await this.executeMarketOrder({
+        executedOrderId = await this.executeMarketOrder({
           symbol: signal.symbol,
           side,
           type: 'MARKET',
@@ -61,7 +90,7 @@ export class OrderManager {
           throw new Error('Price is required for limit orders');
         }
 
-        orderId = await this.executeLimitOrder({
+        executedOrderId = await this.executeLimitOrder({
           symbol: signal.symbol,
           side,
           type: 'LIMIT',
@@ -72,16 +101,18 @@ export class OrderManager {
       }
 
       // Update signal status
-      await this.signalProcessor.updateSignalStatus(signalId, orderId);
+      await this.signalProcessor.updateSignalStatus(signalId, executedOrderId);
 
-      logger.info('Order executed successfully', { signalId, orderId });
+      logger.info('Order executed successfully', { signalId, orderId: executedOrderId });
 
-      return orderId;
+      return executedOrderId;
     } catch (error) {
       logger.error('Failed to execute order from signal', { signalId, error });
 
-      // Update signal with error
-      await this.signalProcessor.updateSignalStatus(signalId, '', (error as Error).message);
+      // Only update signal if not a RiskLimitExceededError (already handled above)
+      if (!(error instanceof RiskLimitExceededError)) {
+        await this.signalProcessor.updateSignalStatus(signalId, '', (error as Error).message);
+      }
 
       throw error;
     }
