@@ -6,6 +6,7 @@ import { RiskManager } from './RiskManager';
 import { SignalProcessor } from './SignalProcessor';
 import { RiskLimitExceededError } from '../utils/errors';
 import databaseService from '../database';
+import { Strategy } from './StrategyService';
 
 const logger = createModuleLogger('OrderManager');
 
@@ -17,6 +18,8 @@ export interface OrderRequest {
   price?: number;
   stopPrice?: number;
   strategyId?: string | null;
+  trading_type?: 'SPOT' | 'FUTURE';
+  leverage?: number;
 }
 
 export class OrderManager {
@@ -38,6 +41,16 @@ export class OrderManager {
 
     try {
       logger.info('Executing order from signal', { signalId, signal, strategyId, bypassEnabledCheck, isManualApproval });
+
+      // Get strategy details if strategyId is provided
+      let strategy: Strategy | null = null;
+      if (strategyId) {
+        strategy = db.prepare('SELECT * FROM strategies WHERE id = ?').get(strategyId) as Strategy | undefined || null;
+        logger.info('Strategy loaded', { strategyId, strategy });
+      }
+
+      const trading_type = strategy?.trading_type || 'SPOT';
+      const leverage = strategy?.leverage || 5;
 
       // Calculate quantity
       const quantity = await this.riskManager.calculatePositionSize(signal);
@@ -63,8 +76,8 @@ export class OrderManager {
 
         const stmt = db.prepare(`
           INSERT INTO orders (
-            id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed, trading_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         const result = stmt.run(
@@ -77,7 +90,8 @@ export class OrderManager {
           'REJECTED',
           riskCheck.reason,
           strategyId || null,
-          0
+          0,
+          trading_type
         );
 
         logger.info('[REJECTED ORDER] Order record created successfully', {
@@ -116,6 +130,8 @@ export class OrderManager {
           type: 'MARKET',
           quantity,
           strategyId: strategyId || null,
+          trading_type,
+          leverage,
         }, riskPassed, isManualApproval);
       } else {
         // Limit order
@@ -130,6 +146,8 @@ export class OrderManager {
           quantity,
           price: signal.price,
           strategyId: strategyId || null,
+          trading_type,
+          leverage,
         }, riskPassed, isManualApproval);
       }
 
@@ -152,8 +170,10 @@ export class OrderManager {
   }
 
   /**
-   * Close a position by creating a MARKET SELL order
+   * Close a position by creating a MARKET order
    * This is a public method that can be called from AdminController
+   * For LONG positions: creates a SELL order
+   * For SHORT positions: creates a BUY order
    */
   async closePositionWithOrder(
     positionId: string,
@@ -162,20 +182,43 @@ export class OrderManager {
   ): Promise<string> {
     logger.info('Closing position with market order', { positionId, symbol, quantity });
 
-    // Create SELL order to close position
+    const db = databaseService.getDatabase();
+
+    // Get the position to determine its side and trading_type
+    const position = db
+      .prepare('SELECT * FROM positions WHERE id = ?')
+      .get(positionId) as any;
+
+    if (!position) {
+      throw new Error(`Position ${positionId} not found`);
+    }
+
+    // Determine the correct order side to close the position
+    // LONG positions are closed with SELL orders
+    // SHORT positions are closed with BUY orders
+    const orderSide = position.side === 'LONG' ? 'SELL' : 'BUY';
+
+    // Create order to close position
     const orderId = await this.executeMarketOrder(
       {
         symbol,
-        side: 'SELL',
+        side: orderSide,
         type: 'MARKET',
         quantity,
         strategyId: null,
+        trading_type: position.trading_type,
+        leverage: position.leverage,
       },
       true, // riskPassed = true (manual close, bypass risk checks)
       false // isManualApproval = false (not from pending signals)
     );
 
-    logger.info('Position closed with order', { positionId, orderId });
+    logger.info('Position closed with order', {
+      positionId,
+      positionSide: position.side,
+      orderSide,
+      orderId,
+    });
     return orderId;
   }
 
@@ -186,12 +229,30 @@ export class OrderManager {
     try {
       logger.info('Executing market order', { orderId, request, isManualApproval });
 
-      // Execute on Binance
-      const binanceOrder = await this.binanceClient.createMarketOrder({
-        symbol: request.symbol,
-        side: request.side,
-        quantity: request.quantity,
-      });
+      const trading_type = request.trading_type || 'SPOT';
+      const leverage = request.leverage || 5;
+
+      let binanceOrder: any;
+
+      if (trading_type === 'FUTURE') {
+        // Set leverage for futures trading
+        logger.info('Setting futures leverage', { symbol: request.symbol, leverage });
+        await this.binanceClient.setFuturesLeverage(request.symbol, leverage);
+
+        // Execute futures order
+        binanceOrder = await this.binanceClient.createFuturesMarketOrder({
+          symbol: request.symbol,
+          side: request.side,
+          quantity: request.quantity,
+        });
+      } else {
+        // Execute spot order
+        binanceOrder = await this.binanceClient.createMarketOrder({
+          symbol: request.symbol,
+          side: request.side,
+          quantity: request.quantity,
+        });
+      }
 
       // Calculate average fill price
       const avgFillPrice =
@@ -211,8 +272,8 @@ export class OrderManager {
         INSERT INTO orders (
           id, binance_order_id, symbol, side, type, quantity,
           status, filled_quantity, avg_fill_price, commission, commission_asset,
-          strategy_id, risk_passed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          strategy_id, risk_passed, trading_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -228,7 +289,8 @@ export class OrderManager {
         commission,
         commissionAsset,
         request.strategyId || null,
-        riskPassed ? 1 : 0
+        riskPassed ? 1 : 0,
+        trading_type
       );
 
       logger.info('Market order executed and saved', {
@@ -250,11 +312,13 @@ export class OrderManager {
       // For manual approvals, don't create REJECTED order record
       // The pending signal will be marked as FAILED instead
       if (!isManualApproval) {
+        const trading_type = request.trading_type || 'SPOT';
+
         // Save failed order to database
         const stmt = db.prepare(`
           INSERT INTO orders (
-            id, symbol, side, type, quantity, status, error_message, strategy_id, risk_passed
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, symbol, side, type, quantity, status, error_message, strategy_id, risk_passed, trading_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -266,7 +330,8 @@ export class OrderManager {
           'REJECTED',
           (error as Error).message,
           request.strategyId || null,
-          riskPassed ? 1 : 0
+          riskPassed ? 1 : 0,
+          trading_type
         );
 
         logger.info('Created REJECTED order record for automatic signal', { orderId });
@@ -285,20 +350,39 @@ export class OrderManager {
     try {
       logger.info('Executing limit order', { orderId, request, isManualApproval });
 
-      // Execute on Binance
-      const binanceOrder = await this.binanceClient.createLimitOrder({
-        symbol: request.symbol,
-        side: request.side,
-        quantity: request.quantity,
-        price: request.price!,
-      });
+      const trading_type = request.trading_type || 'SPOT';
+      const leverage = request.leverage || 5;
+
+      let binanceOrder: any;
+
+      if (trading_type === 'FUTURE') {
+        // Set leverage for futures trading
+        logger.info('Setting futures leverage for limit order', { symbol: request.symbol, leverage });
+        await this.binanceClient.setFuturesLeverage(request.symbol, leverage);
+
+        // Execute futures limit order
+        binanceOrder = await this.binanceClient.createFuturesLimitOrder({
+          symbol: request.symbol,
+          side: request.side,
+          quantity: request.quantity,
+          price: request.price!,
+        });
+      } else {
+        // Execute spot limit order
+        binanceOrder = await this.binanceClient.createLimitOrder({
+          symbol: request.symbol,
+          side: request.side,
+          quantity: request.quantity,
+          price: request.price!,
+        });
+      }
 
       // Save to database
       const stmt = db.prepare(`
         INSERT INTO orders (
           id, binance_order_id, symbol, side, type, quantity, price, status,
-          strategy_id, risk_passed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          strategy_id, risk_passed, trading_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -311,13 +395,15 @@ export class OrderManager {
         request.price,
         binanceOrder.status,
         request.strategyId || null,
-        riskPassed ? 1 : 0
+        riskPassed ? 1 : 0,
+        trading_type
       );
 
       logger.info('Limit order executed and saved', {
         orderId,
         binanceOrderId: binanceOrder.orderId,
         status: binanceOrder.status,
+        trading_type,
       });
 
       return orderId;
@@ -327,11 +413,13 @@ export class OrderManager {
       // For manual approvals, don't create REJECTED order record
       // The pending signal will be marked as FAILED instead
       if (!isManualApproval) {
+        const trading_type = request.trading_type || 'SPOT';
+
         // Save failed order to database
         const stmt = db.prepare(`
           INSERT INTO orders (
-            id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed, trading_type
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         stmt.run(
@@ -344,7 +432,8 @@ export class OrderManager {
           'REJECTED',
           (error as Error).message,
           request.strategyId || null,
-          riskPassed ? 1 : 0
+          riskPassed ? 1 : 0,
+          trading_type
         );
 
         logger.info('Created REJECTED order record for automatic signal', { orderId });
@@ -440,12 +529,24 @@ export class OrderManager {
     fillPrice: number
   ): Promise<void> {
     try {
-      if (request.side === 'BUY') {
-        // Create new position for BUY orders
-        await this.createPosition(orderId, request, fillPrice);
-      } else if (request.side === 'SELL') {
-        // Close position for SELL orders
-        await this.closePosition(orderId, request, fillPrice);
+      const trading_type = request.trading_type || 'SPOT';
+
+      if (trading_type === 'SPOT') {
+        // Spot trading: BUY opens position, SELL closes position
+        if (request.side === 'BUY') {
+          await this.createPosition(orderId, request, fillPrice);
+        } else if (request.side === 'SELL') {
+          await this.closePosition(orderId, request, fillPrice);
+        }
+      } else {
+        // Futures trading: BUY can open LONG or close SHORT, SELL can open SHORT or close LONG
+        // For now, we'll treat BUY as opening LONG and SELL as closing LONG (simplified)
+        // In a more complex system, we'd check if there's an existing position to close first
+        if (request.side === 'BUY') {
+          await this.createPosition(orderId, request, fillPrice);
+        } else if (request.side === 'SELL') {
+          await this.closePosition(orderId, request, fillPrice);
+        }
       }
     } catch (error) {
       logger.error('Failed to handle filled order', {
@@ -468,13 +569,33 @@ export class OrderManager {
     const positionId = uuidv4();
 
     try {
+      const trading_type = request.trading_type || 'SPOT';
+      const leverage = request.leverage || 5;
+
+      // Determine position side based on order side and trading type
+      // Spot: Always LONG (BUY opens, SELL closes)
+      // Futures: BUY opens LONG, SELL opens SHORT (but we're treating SELL as close for now)
+      const positionSide = request.side === 'BUY' ? 'LONG' : 'SHORT';
+
       // Check if there's already an open position for this symbol
+      // For our "only 1 position per symbol" rule
       const existingPosition = db
         .prepare('SELECT * FROM positions WHERE symbol = ? AND status = ?')
         .get(request.symbol, 'OPEN') as any;
 
       if (existingPosition) {
         // Update existing position - average entry price
+        // This only makes sense if positions are on the same side
+        if (existingPosition.side !== positionSide) {
+          logger.warn('Attempting to add to position with different side', {
+            existingPosition,
+            newSide: positionSide,
+          });
+          throw new Error(
+            `Cannot add ${positionSide} position when ${existingPosition.side} position exists for ${request.symbol}`
+          );
+        }
+
         const totalQuantity = existingPosition.quantity + request.quantity;
         const totalValue =
           existingPosition.quantity * existingPosition.entry_price +
@@ -490,24 +611,54 @@ export class OrderManager {
         logger.info('Updated existing position', {
           positionId: existingPosition.id,
           symbol: request.symbol,
+          side: positionSide,
           newQuantity: totalQuantity,
           avgEntryPrice,
         });
       } else {
+        // Calculate liquidation price for futures (simplified calculation)
+        let liquidationPrice = null;
+        if (trading_type === 'FUTURE') {
+          // Liquidation price formula (simplified):
+          // LONG: entryPrice * (1 - 1/leverage)
+          // SHORT: entryPrice * (1 + 1/leverage)
+          if (positionSide === 'LONG') {
+            liquidationPrice = entryPrice * (1 - 1 / leverage);
+          } else {
+            liquidationPrice = entryPrice * (1 + 1 / leverage);
+          }
+        }
+
         // Create new position
         db.prepare(
           `INSERT INTO positions (
-            id, entry_order_id, symbol, side, quantity, entry_price, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?)`
-        ).run(positionId, orderId, request.symbol, 'LONG', request.quantity, entryPrice, 'OPEN');
+            id, entry_order_id, symbol, side, trading_type, leverage, quantity,
+            entry_price, liquidation_price, status, realized_pnl
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          positionId,
+          orderId,
+          request.symbol,
+          positionSide,
+          trading_type,
+          trading_type === 'FUTURE' ? leverage : null,
+          request.quantity,
+          entryPrice,
+          liquidationPrice,
+          'OPEN',
+          0
+        );
 
         logger.info('Created new position', {
           positionId,
           orderId,
           symbol: request.symbol,
-          side: 'LONG',
+          side: positionSide,
+          trading_type,
+          leverage: trading_type === 'FUTURE' ? leverage : null,
           quantity: request.quantity,
           entryPrice,
+          liquidationPrice,
         });
       }
     } catch (error) {
@@ -539,20 +690,50 @@ export class OrderManager {
         return;
       }
 
+      // Validate order side matches position side for closing
+      // LONG positions are closed with SELL orders
+      // SHORT positions are closed with BUY orders
+      if (position.side === 'LONG' && request.side !== 'SELL') {
+        logger.error('Invalid close order side for LONG position', {
+          positionId: position.id,
+          positionSide: position.side,
+          orderSide: request.side,
+        });
+        throw new Error('LONG positions must be closed with SELL orders');
+      }
+
+      if (position.side === 'SHORT' && request.side !== 'BUY') {
+        logger.error('Invalid close order side for SHORT position', {
+          positionId: position.id,
+          positionSide: position.side,
+          orderSide: request.side,
+        });
+        throw new Error('SHORT positions must be closed with BUY orders');
+      }
+
       // Calculate realized PnL
-      const realizedPnL = (exitPrice - position.entry_price) * request.quantity;
+      // LONG: (exitPrice - entryPrice) * quantity
+      // SHORT: (entryPrice - exitPrice) * quantity (inverse)
+      let realizedPnL: number;
+      if (position.side === 'LONG') {
+        realizedPnL = (exitPrice - position.entry_price) * request.quantity;
+      } else {
+        // SHORT position
+        realizedPnL = (position.entry_price - exitPrice) * request.quantity;
+      }
 
       if (request.quantity >= position.quantity) {
         // Close entire position
         db.prepare(
           `UPDATE positions
-           SET status = ?, exit_price = ?, realized_pnl = ?, closed_at = CURRENT_TIMESTAMP
+           SET status = ?, exit_price = ?, realized_pnl = ?, exit_order_id = ?, closed_at = CURRENT_TIMESTAMP
            WHERE id = ?`
-        ).run('CLOSED', exitPrice, realizedPnL, position.id);
+        ).run('CLOSED', exitPrice, realizedPnL, orderId, position.id);
 
         logger.info('Closed position', {
           positionId: position.id,
           symbol: request.symbol,
+          side: position.side,
           realizedPnL,
         });
       } else {
@@ -568,6 +749,7 @@ export class OrderManager {
         logger.info('Partially closed position', {
           positionId: position.id,
           symbol: request.symbol,
+          side: position.side,
           remainingQuantity,
           realizedPnL,
         });

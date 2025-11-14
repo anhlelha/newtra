@@ -90,6 +90,14 @@ export interface FuturesMarketOrderParams {
   positionSide?: 'LONG' | 'SHORT' | 'BOTH';
 }
 
+export interface FuturesLimitOrderParams {
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  quantity: number;
+  price: number;
+  positionSide?: 'LONG' | 'SHORT' | 'BOTH';
+}
+
 export interface FuturesAccountInfo {
   totalWalletBalance: string;
   totalUnrealizedProfit: string;

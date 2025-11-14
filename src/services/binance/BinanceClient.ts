@@ -13,6 +13,7 @@ import {
   TickerPrice,
   Stats24hr,
   FuturesMarketOrderParams,
+  FuturesLimitOrderParams,
   FuturesAccountInfo,
   FuturesBalance,
   FuturesPosition,
@@ -307,6 +308,35 @@ export class BinanceClient {
     } catch (error) {
       logger.error('Failed to create futures market order', { params, error });
       throw this.handleBinanceError(error, 'createFuturesMarketOrder');
+    }
+  }
+
+  async createFuturesLimitOrder(params: FuturesLimitOrderParams): Promise<Order> {
+    try {
+      logger.info('Creating futures limit order', params);
+
+      const order = await this.retryWithBackoff(() =>
+        this.client.futuresOrder({
+          symbol: params.symbol,
+          side: params.side,
+          type: 'LIMIT',
+          quantity: params.quantity.toString(),
+          price: params.price.toString(),
+          timeInForce: 'GTC', // Good Till Cancel
+          positionSide: params.positionSide,
+        })
+      );
+
+      logger.info('Futures limit order created', {
+        orderId: order.orderId,
+        symbol: params.symbol,
+        status: order.status,
+      });
+
+      return this.mapOrder(order);
+    } catch (error) {
+      logger.error('Failed to create futures limit order', { params, error });
+      throw this.handleBinanceError(error, 'createFuturesLimitOrder');
     }
   }
 
