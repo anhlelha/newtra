@@ -237,7 +237,17 @@ export class AdminController {
 
       // Override with database values if they exist
       for (const row of configRows) {
-        const value = JSON.parse(row.value);
+        let value;
+        try {
+          value = JSON.parse(row.value);
+        } catch (e) {
+          // If JSON parsing fails, try to convert the value manually
+          if (row.value === 'true') value = true;
+          else if (row.value === 'false') value = false;
+          else if (!isNaN(Number(row.value))) value = Number(row.value);
+          else value = row.value; // Keep as string
+        }
+
         switch (row.key) {
           case 'trading.defaultPositionSizePercent':
             riskConfig.defaultPositionSizePercent = value;
