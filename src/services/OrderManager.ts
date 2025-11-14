@@ -43,13 +43,24 @@ export class OrderManager {
       if (!riskPassed) {
         // Create REJECTED order record so it's visible in UI
         const side = this.getOrderSide(signal);
+
+        logger.info('[REJECTED ORDER] Creating REJECTED order record', {
+          orderId,
+          signalId,
+          symbol: signal.symbol,
+          side,
+          quantity,
+          reason: riskCheck.reason,
+          strategyId,
+        });
+
         const stmt = db.prepare(`
           INSERT INTO orders (
             id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        stmt.run(
+        const result = stmt.run(
           orderId,
           signal.symbol,
           side,
@@ -61,6 +72,21 @@ export class OrderManager {
           strategyId || null,
           0
         );
+
+        logger.info('[REJECTED ORDER] Order record created successfully', {
+          orderId,
+          changes: result.changes,
+          lastInsertRowid: result.lastInsertRowid,
+        });
+
+        // Verify the order was created
+        const verifyStmt = db.prepare('SELECT * FROM orders WHERE id = ?');
+        const createdOrder = verifyStmt.get(orderId);
+        logger.info('[REJECTED ORDER] Verification query result', {
+          orderId,
+          found: !!createdOrder,
+          order: createdOrder,
+        });
 
         // Update signal status with order ID and error
         await this.signalProcessor.updateSignalStatus(signalId, orderId, riskCheck.reason);
