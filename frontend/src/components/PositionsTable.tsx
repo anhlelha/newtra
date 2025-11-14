@@ -35,7 +35,10 @@ export const PositionsTable = ({ positions, onClose, closingPositionId }: Positi
           <tr>
             <th>Symbol</th>
             <th>Side</th>
+            <th>Trading</th>
+            <th>Leverage</th>
             <th>Entry Price</th>
+            <th>Liquidation</th>
             <th>Current Price</th>
             <th>Quantity</th>
             <th>P&L</th>
@@ -62,7 +65,20 @@ export const PositionsTable = ({ positions, onClose, closingPositionId }: Positi
                     {position.side}
                   </span>
                 </td>
+                <td>
+                  <span className={`trading-badge ${position.trading_type === 'FUTURE' ? 'future' : 'spot'}`}>
+                    {position.trading_type || 'SPOT'}
+                  </span>
+                </td>
+                <td>
+                  {position.trading_type === 'FUTURE' && position.leverage ? `${position.leverage}x` : '-'}
+                </td>
                 <td>{formatPrice(position.entry_price)}</td>
+                <td>
+                  {position.trading_type === 'FUTURE' && position.liquidation_price
+                    ? formatPrice(position.liquidation_price)
+                    : '-'}
+                </td>
                 <td>{position.currentPrice ? formatPrice(position.currentPrice) : '-'}</td>
                 <td>
                   {position.quantity} {position.symbol.replace(/USDT|BUSD/, '')}

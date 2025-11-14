@@ -15,6 +15,8 @@ export default function StrategiesPage() {
   const [formData, setFormData] = useState<CreateStrategyInput>({
     name: '',
     type: 'automatic',
+    trading_type: 'SPOT',
+    leverage: 5,
     description: '',
     enabled: true,
   });
@@ -68,6 +70,8 @@ export default function StrategiesPage() {
     setFormData({
       name: '',
       type: 'automatic',
+      trading_type: 'SPOT',
+      leverage: 5,
       description: '',
       enabled: true,
     });
@@ -87,6 +91,8 @@ export default function StrategiesPage() {
     setFormData({
       name: strategy.name,
       type: strategy.type,
+      trading_type: strategy.trading_type || 'SPOT',
+      leverage: strategy.leverage || 5,
       description: strategy.description || '',
       enabled: Boolean(strategy.enabled), // Ensure boolean conversion
     });
@@ -137,6 +143,8 @@ export default function StrategiesPage() {
                   <tr>
                     <th>Name</th>
                     <th>Type</th>
+                    <th>Trading</th>
+                    <th>Leverage</th>
                     <th>Status</th>
                     <th>Description</th>
                     <th>Created</th>
@@ -158,6 +166,16 @@ export default function StrategiesPage() {
                         >
                           {strategy.type.toUpperCase()}
                         </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`type-badge ${strategy.trading_type === 'FUTURE' ? 'future' : 'spot'}`}
+                        >
+                          {strategy.trading_type || 'SPOT'}
+                        </span>
+                      </td>
+                      <td>
+                        {strategy.trading_type === 'FUTURE' ? `${strategy.leverage}x` : '-'}
                       </td>
                       <td>
                         <span
@@ -269,6 +287,49 @@ export default function StrategiesPage() {
                     <option value="manual">Manual (Requires Approval)</option>
                   </select>
                 </div>
+
+                {/* Trading Type */}
+                <div className="form-group">
+                  <label>Trading Type</label>
+                  <select
+                    value={formData.trading_type}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        trading_type: e.target.value as 'SPOT' | 'FUTURE',
+                      })
+                    }
+                    className="form-select"
+                  >
+                    <option value="SPOT">Spot Trading</option>
+                    <option value="FUTURE">Futures Trading</option>
+                  </select>
+                </div>
+
+                {/* Leverage (only for futures) */}
+                {formData.trading_type === 'FUTURE' && (
+                  <div className="form-group">
+                    <label>Leverage (1x - 125x)</label>
+                    <input
+                      type="number"
+                      value={formData.leverage}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          leverage: parseInt(e.target.value) || 5,
+                        })
+                      }
+                      className="form-input"
+                      placeholder="5"
+                      min="1"
+                      max="125"
+                      required
+                    />
+                    <div className="form-helper-text">
+                      Default: 5x. Higher leverage increases both potential profit and risk.
+                    </div>
+                  </div>
+                )}
 
                 {/* Description */}
                 <div className="form-group">
