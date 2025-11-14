@@ -273,10 +273,13 @@ export class AdminController {
         }
       }
 
-      res.status(200).json(riskConfig);
+      return res.status(200).json(riskConfig);
     } catch (error) {
       logger.error('Failed to get risk config', { error });
-      throw error;
+      return res.status(500).json({
+        error: 'Failed to get risk configuration',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
@@ -337,14 +340,17 @@ export class AdminController {
 
       logger.info('Risk configuration updated', { updates });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: 'Risk configuration updated successfully',
         updates,
       });
     } catch (error) {
       logger.error('Failed to update risk config', { error });
-      throw error;
+      return res.status(500).json({
+        error: 'Failed to update risk configuration',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 

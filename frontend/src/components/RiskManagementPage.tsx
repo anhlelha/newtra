@@ -78,25 +78,40 @@ export default function RiskManagementPage() {
   // Update risk config mutation
   const updateMutation = useMutation({
     mutationFn: apiClient.updateRiskConfig,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Update mutation success:', data);
       queryClient.invalidateQueries({ queryKey: ['riskConfig'] });
       setShowEditModal(false);
       setFormData(null);
+    },
+    onError: (error) => {
+      console.error('Update mutation error:', error);
+      alert('Failed to update risk configuration: ' + (error instanceof Error ? error.message : 'Unknown error'));
     },
   });
 
   // Toggle enabled mutation
   const toggleEnabledMutation = useMutation({
     mutationFn: (enabled: boolean) => apiClient.updateRiskConfig({ enabled }),
-    onSuccess: () => {
+    onSuccess: (data, enabled) => {
+      console.log('Toggle mutation success:', data, 'New enabled state:', enabled);
       queryClient.invalidateQueries({ queryKey: ['riskConfig'] });
+    },
+    onError: (error) => {
+      console.error('Toggle mutation error:', error);
+      alert('Failed to update risk management status: ' + (error instanceof Error ? error.message : 'Unknown error'));
     },
   });
 
   const handleToggleEnabled = () => {
-    if (!riskConfig) return;
+    console.log('handleToggleEnabled called, current riskConfig:', riskConfig);
+    if (!riskConfig) {
+      console.error('No riskConfig available');
+      return;
+    }
 
     const newEnabledState = !riskConfig.enabled;
+    console.log('Toggling from', riskConfig.enabled, 'to', newEnabledState);
 
     if (!newEnabledState) {
       // Disabling - show warning
@@ -105,9 +120,11 @@ export default function RiskManagementPage() {
         'This will bypass ALL risk checks and allow orders to execute without validation.\n\n' +
         'Are you sure you want to disable risk management?'
       );
+      console.log('User confirmation:', confirmed);
       if (!confirmed) return;
     }
 
+    console.log('Calling toggleEnabledMutation.mutate with:', newEnabledState);
     toggleEnabledMutation.mutate(newEnabledState);
   };
 
