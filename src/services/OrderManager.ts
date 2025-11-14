@@ -262,7 +262,7 @@ export class OrderManager {
 
       // Calculate commission
       const commission = binanceOrder.fills
-        ? binanceOrder.fills.reduce((sum, fill) => sum + parseFloat(fill.commission), 0)
+        ? binanceOrder.fills.reduce((sum: number, fill: any) => sum + parseFloat(fill.commission), 0)
         : 0;
 
       const commissionAsset = binanceOrder.fills?.[0]?.commissionAsset || '';
