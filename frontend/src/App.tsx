@@ -6,6 +6,7 @@ import PendingSignalsPage from './components/PendingSignalsPage';
 import RiskManagementPage from './components/RiskManagementPage';
 import { Navigation } from './components/Navigation';
 import { apiClient } from './lib/api';
+import { TradingTypeProvider } from './contexts/TradingTypeContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +47,9 @@ function AppContent() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <TradingTypeProvider>
+        <AppContent />
+      </TradingTypeProvider>
     </QueryClientProvider>
   );
 }

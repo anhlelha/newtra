@@ -6,20 +6,22 @@ import type { Strategy, CreateStrategyInput } from '../types';
 import { Background } from './Background';
 import { Panel } from './Panel';
 import { GridIcon } from './icons';
+import { useTradingType } from '../contexts/TradingTypeContext';
 import './StrategiesPage.css';
 
 export default function StrategiesPage() {
   const queryClient = useQueryClient();
+  const { tradingType } = useTradingType();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingStrategy, setEditingStrategy] = useState<Strategy | null>(null);
-  const [formData, setFormData] = useState<CreateStrategyInput>({
+  const [formData, setFormData] = useState<CreateStrategyInput>(() => ({
     name: '',
     type: 'automatic',
-    trading_type: 'SPOT',
+    trading_type: tradingType,
     leverage: 5,
     description: '',
     enabled: true,
-  });
+  }));
 
   // Fetch strategies
   const { data: strategies = [], isLoading } = useQuery({
@@ -27,6 +29,11 @@ export default function StrategiesPage() {
     queryFn: apiClient.getStrategies,
     refetchInterval: 10000, // Refresh every 10s
   });
+
+  // Filter strategies by trading type
+  const filteredStrategies = strategies.filter(
+    (s) => (s.trading_type || 'SPOT') === tradingType
+  );
 
   // Create strategy mutation
   const createMutation = useMutation({
@@ -70,7 +77,7 @@ export default function StrategiesPage() {
     setFormData({
       name: '',
       type: 'automatic',
-      trading_type: 'SPOT',
+      trading_type: tradingType,
       leverage: 5,
       description: '',
       enabled: true,
@@ -116,7 +123,7 @@ export default function StrategiesPage() {
       <div className="dashboard-container">
         {/* Panel with table */}
         <Panel
-          title="Strategy Management"
+          title={`Strategy Management (${tradingType})`}
           icon={<GridIcon />}
           action={
             <button
@@ -152,7 +159,7 @@ export default function StrategiesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {strategies.map((strategy, index) => (
+                  {filteredStrategies.map((strategy, index) => (
                     <motion.tr
                       key={strategy.id}
                       initial={{ opacity: 0, x: -20 }}
@@ -217,9 +224,9 @@ export default function StrategiesPage() {
                   ))}
                 </tbody>
               </table>
-              {strategies.length === 0 && (
+              {filteredStrategies.length === 0 && (
                 <div className="empty-state">
-                  <p>No strategies configured. Create your first strategy to get started.</p>
+                  <p>No {tradingType} strategies configured. Create your first {tradingType} strategy to get started.</p>
                 </div>
               )}
             </div>

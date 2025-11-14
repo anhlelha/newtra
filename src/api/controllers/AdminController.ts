@@ -241,6 +241,19 @@ export class AdminController {
     }
   }
 
+  async getFuturesBalance(req: Request, res: Response) {
+    try {
+      const { asset = 'USDT' } = req.query;
+
+      const balance = await this.binanceClient.getFuturesBalance(asset as string);
+
+      res.status(200).json(balance);
+    } catch (error) {
+      logger.error('Failed to get futures balance', { error });
+      throw error;
+    }
+  }
+
   async updateConfig(req: Request, res: Response) {
     try {
       const updates = req.body;

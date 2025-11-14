@@ -2,6 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 2rem;
   padding: 1.5rem 2rem;
   background: rgba(19, 24, 35, 0.6);
   backdrop-filter: blur(20px);
@@ -40,6 +41,47 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-transform: uppercase;
+}
+
+/* Header Trading Toggle */
+.header-trading-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.header-toggle-button {
+  padding: 0.5rem 1.25rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.header-toggle-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.header-toggle-button.active {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 2px 8px rgba(0, 255, 157, 0.3);
+}
+
+.header-toggle-button.active:hover {
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
 }
 
 .header-controls {
@@ -97,6 +139,16 @@
   .header {
     flex-direction: column;
     gap: 1rem;
+  }
+
+  .header-trading-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .header-toggle-button {
+    flex: 1;
+    padding: 0.6rem 1rem;
   }
 
   .header-controls {

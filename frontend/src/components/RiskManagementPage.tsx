@@ -6,6 +6,7 @@ import type { RiskConfig } from '../types';
 import { Background } from './Background';
 import { Panel } from './Panel';
 import { GridIcon } from './icons';
+import { useTradingType } from '../contexts/TradingTypeContext';
 import './RiskManagementPage.css';
 
 interface RiskParameter {
@@ -63,6 +64,7 @@ const riskParameters: RiskParameter[] = [
 
 export default function RiskManagementPage() {
   const queryClient = useQueryClient();
+  const { tradingType } = useTradingType();
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState<RiskConfig | null>(null);
 
@@ -161,7 +163,7 @@ export default function RiskManagementPage() {
       <div className="dashboard-container">
         {/* Panel with table */}
         <Panel
-          title="Risk Management"
+          title={`Risk Management (${tradingType})`}
           icon={<GridIcon />}
           action={
             <div style={{ display: 'flex', gap: '0.75rem' }}>

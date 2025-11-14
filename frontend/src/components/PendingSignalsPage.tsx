@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { apiClient } from '../lib/api';
@@ -6,16 +6,34 @@ import { Background } from './Background';
 import { Panel } from './Panel';
 import { ClockIcon } from './icons';
 import { formatShortDateTimeGMT7 } from '../utils/timeFormat';
+import { useTradingType } from '../contexts/TradingTypeContext';
 import './PendingSignalsPage.css';
 
 export default function PendingSignalsPage() {
   const queryClient = useQueryClient();
+  const { tradingType } = useTradingType();
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'failed' | 'all'>(
     'pending'
   );
 
+  // Fetch strategies to map strategy_id to trading_type
+  const { data: strategies = [] } = useQuery({
+    queryKey: ['strategies'],
+    queryFn: apiClient.getStrategies,
+    refetchInterval: 10000,
+  });
+
+  // Create a map of strategy_id to trading_type
+  const strategyTradingTypeMap = useMemo(() => {
+    const map = new Map<string, 'SPOT' | 'FUTURE'>();
+    strategies.forEach(s => {
+      map.set(s.id, s.trading_type || 'SPOT');
+    });
+    return map;
+  }, [strategies]);
+
   // Fetch pending signals
-  const { data: signals = [], isLoading } = useQuery({
+  const { data: allSignals = [], isLoading } = useQuery({
     queryKey: ['pendingSignals', filter],
     queryFn: () =>
       apiClient.getPendingSignals(
@@ -23,6 +41,14 @@ export default function PendingSignalsPage() {
       ),
     refetchInterval: 5000, // Refresh every 5s for pending signals
   });
+
+  // Filter signals by trading type
+  const signals = useMemo(() => {
+    return allSignals.filter(signal => {
+      const signalTradingType = strategyTradingTypeMap.get(signal.strategy_id) || 'SPOT';
+      return signalTradingType === tradingType;
+    });
+  }, [allSignals, strategyTradingTypeMap, tradingType]);
 
   // Approve mutation
   const approveMutation = useMutation({
@@ -60,7 +86,7 @@ export default function PendingSignalsPage() {
 
       <div className="dashboard-container">
         <Panel
-          title="Pending Signals"
+          title={`Pending Signals (${tradingType})`}
           icon={<ClockIcon />}
           action={
             <div className="filter-tabs">

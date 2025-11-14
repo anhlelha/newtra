@@ -37,6 +37,10 @@ export function createAdminRouter(controller: AdminController): Router {
     controller.getBalance(req, res).catch(next);
   });
 
+  router.get('/balance/futures', (req, res, next) => {
+    controller.getFuturesBalance(req, res).catch(next);
+  });
+
   router.post('/config', (req, res, next) => {
     controller.updateConfig(req, res).catch(next);
   });

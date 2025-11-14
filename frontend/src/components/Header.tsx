@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { LogoIcon, SettingsIcon, BellIcon, InfoIcon } from './icons';
+import { useTradingType } from '../contexts/TradingTypeContext';
 import './Header.css';
 
 interface HeaderProps {
@@ -7,6 +8,8 @@ interface HeaderProps {
 }
 
 export const Header = ({ tradingActive }: HeaderProps) => {
+  const { tradingType, setTradingType } = useTradingType();
+
   return (
     <motion.header
       className="header"
@@ -19,6 +22,22 @@ export const Header = ({ tradingActive }: HeaderProps) => {
           <LogoIcon />
         </div>
         <span className="logo-text">NeXTra</span>
+      </div>
+
+      {/* Global Trading Type Toggle */}
+      <div className="header-trading-toggle">
+        <button
+          className={`header-toggle-button ${tradingType === 'SPOT' ? 'active' : ''}`}
+          onClick={() => setTradingType('SPOT')}
+        >
+          SPOT
+        </button>
+        <button
+          className={`header-toggle-button ${tradingType === 'FUTURE' ? 'active' : ''}`}
+          onClick={() => setTradingType('FUTURE')}
+        >
+          FUTURE
+        </button>
       </div>
 
       <div className="header-controls">

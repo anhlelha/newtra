@@ -4,6 +4,12 @@ export interface Balance {
   locked: string;
 }
 
+export interface FuturesBalance {
+  asset: string;
+  balance: string;
+  availableBalance: string;
+}
+
 export interface Position {
   id: string;
   symbol: string;

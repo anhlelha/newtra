@@ -19,12 +19,13 @@ import {
   ControlIcon,
 } from './icons';
 import { apiClient } from '../lib/api';
+import { useTradingType } from '../contexts/TradingTypeContext';
 import './Dashboard.css';
 
 export const Dashboard = () => {
   const queryClient = useQueryClient();
   const [closingPositionId, setClosingPositionId] = useState<string | null>(null);
-  const [tradingTypeFilter, setTradingTypeFilter] = useState<'SPOT' | 'FUTURE'>('SPOT');
+  const { tradingType } = useTradingType();
 
   // Fetch data with React Query
   const { data: status } = useQuery({
@@ -39,15 +40,26 @@ export const Dashboard = () => {
     refetchInterval: 5000,
   });
 
-  const { data: orders = [] } = useQuery({
+  const { data: allOrders = [] } = useQuery({
     queryKey: ['orders'],
     queryFn: () => apiClient.getOrders({ limit: 20 }),
     refetchInterval: 5000,
   });
 
-  const { data: balance } = useQuery({
-    queryKey: ['balance'],
-    queryFn: () => apiClient.getBalance('USDT'),
+  // Filter orders by trading type
+  const orders = allOrders.filter(o =>
+    (o.trading_type || 'SPOT') === tradingType
+  );
+
+  // Fetch balance based on trading type
+  const { data: balance } = useQuery<any>({
+    queryKey: ['balance', tradingType],
+    queryFn: () => {
+      if (tradingType === 'FUTURE') {
+        return apiClient.getFuturesBalance('USDT');
+      }
+      return apiClient.getBalance('USDT');
+    },
     refetchInterval: 10000,
   });
 
@@ -123,11 +135,15 @@ Are you sure you want to close this position?`;
 
   // Filter positions by trading type
   const filteredPositions = positions.filter(p =>
-    (p.trading_type || 'SPOT') === tradingTypeFilter
+    (p.trading_type || 'SPOT') === tradingType
   );
 
   // Calculate stats
-  const totalBalance = balance ? parseFloat(balance.free) + parseFloat(balance.locked) : 0;
+  const totalBalance = balance
+    ? tradingType === 'FUTURE'
+      ? parseFloat((balance as any).balance || '0')
+      : parseFloat((balance as any).free || '0') + parseFloat((balance as any).locked || '0')
+    : 0;
   const todayPnL = status?.todayPnL || 0;
   const openPositionsCount = filteredPositions.length;
   const totalExposure = status?.currentExposure || 0;
@@ -139,24 +155,6 @@ Are you sure you want to close this position?`;
 
       <div className="dashboard-container">
         <Header tradingActive={status?.tradingEnabled || false} />
-
-        {/* Trading Type Toggle */}
-        <div className="trading-type-toggle-container">
-          <div className="trading-type-toggle">
-            <button
-              className={`toggle-button ${tradingTypeFilter === 'SPOT' ? 'active' : ''}`}
-              onClick={() => setTradingTypeFilter('SPOT')}
-            >
-              SPOT
-            </button>
-            <button
-              className={`toggle-button ${tradingTypeFilter === 'FUTURE' ? 'active' : ''}`}
-              onClick={() => setTradingTypeFilter('FUTURE')}
-            >
-              FUTURE
-            </button>
-          </div>
-        </div>
 
         {/* Stats Grid */}
         <div className="stats-grid">
@@ -227,7 +225,7 @@ Are you sure you want to close this position?`;
 
         {/* Order List */}
         <Panel
-          title="Order List"
+          title={`Order List (${tradingType})`}
           icon={<TableIcon />}
           action={<span className="panel-meta">{orders.length} total</span>}
           delay={0.55}
@@ -237,7 +235,7 @@ Are you sure you want to close this position?`;
 
         {/* Open Positions */}
         <Panel
-          title={`Open Positions (${tradingTypeFilter})`}
+          title={`Open Positions (${tradingType})`}
           icon={<TableIcon />}
           action={<span className="panel-meta">{openPositionsCount} active</span>}
           delay={0.6}

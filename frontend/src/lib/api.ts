@@ -5,6 +5,7 @@ import type {
   SystemStatus,
   HealthStatus,
   Balance,
+  FuturesBalance,
   Strategy,
   PendingSignal,
   CreateStrategyInput,
@@ -72,6 +73,11 @@ export const apiClient = {
   // Balance
   getBalance: async (asset: string = 'USDT'): Promise<Balance> => {
     const { data } = await api.get('/balance', { params: { asset } });
+    return data;
+  },
+
+  getFuturesBalance: async (asset: string = 'USDT'): Promise<FuturesBalance> => {
+    const { data } = await api.get('/balance/futures', { params: { asset } });
     return data;
   },
 
