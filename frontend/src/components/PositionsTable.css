@@ -84,6 +84,27 @@
   border: 1px solid var(--accent-danger);
 }
 
+.trading-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.trading-badge.spot {
+  background: rgba(100, 150, 255, 0.15);
+  color: #6496ff;
+  border: 1px solid #6496ff;
+}
+
+.trading-badge.future {
+  background: rgba(255, 165, 0, 0.15);
+  color: #ffa500;
+  border: 1px solid #ffa500;
+}
+
 .pnl-positive {
   color: var(--accent-primary);
   font-weight: 600;

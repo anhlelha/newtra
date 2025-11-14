@@ -125,6 +125,18 @@
   border: 1px solid #FFB800;
 }
 
+.type-badge.spot {
+  background: rgba(100, 150, 255, 0.15);
+  color: #6496ff;
+  border: 1px solid #6496ff;
+}
+
+.type-badge.future {
+  background: rgba(255, 165, 0, 0.15);
+  color: #ffa500;
+  border: 1px solid #ffa500;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -316,6 +328,13 @@
   font-size: 0.95rem;
   color: var(--text-secondary);
   cursor: pointer;
+}
+
+.form-helper-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: -0.25rem;
 }
 
 /* Modal Buttons */

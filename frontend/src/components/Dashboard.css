@@ -51,6 +51,51 @@
   }
 }
 
+/* Trading Type Toggle */
+.trading-type-toggle-container {
+  margin-bottom: 2rem;
+}
+
+.trading-type-toggle {
+  display: inline-flex;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.trading-type-toggle .toggle-button {
+  padding: 0.6rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'Space Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.trading-type-toggle .toggle-button:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.trading-type-toggle .toggle-button.active {
+  background: var(--accent-primary);
+  color: var(--bg-primary);
+  box-shadow: 0 2px 8px rgba(0, 255, 157, 0.3);
+}
+
+.trading-type-toggle .toggle-button.active:hover {
+  background: var(--accent-secondary);
+  color: var(--bg-primary);
+}
+
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 1rem;
@@ -58,5 +103,14 @@
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .trading-type-toggle-container {
+    text-align: center;
+  }
+
+  .trading-type-toggle .toggle-button {
+    padding: 0.5rem 1.2rem;
+    font-size: 0.85rem;
   }
 }

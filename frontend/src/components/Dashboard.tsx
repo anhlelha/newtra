@@ -24,6 +24,7 @@ import './Dashboard.css';
 export const Dashboard = () => {
   const queryClient = useQueryClient();
   const [closingPositionId, setClosingPositionId] = useState<string | null>(null);
+  const [tradingTypeFilter, setTradingTypeFilter] = useState<'SPOT' | 'FUTURE'>('SPOT');
 
   // Fetch data with React Query
   const { data: status } = useQuery({
@@ -120,10 +121,15 @@ Are you sure you want to close this position?`;
     }
   };
 
+  // Filter positions by trading type
+  const filteredPositions = positions.filter(p =>
+    (p.trading_type || 'SPOT') === tradingTypeFilter
+  );
+
   // Calculate stats
   const totalBalance = balance ? parseFloat(balance.free) + parseFloat(balance.locked) : 0;
   const todayPnL = status?.todayPnL || 0;
-  const openPositionsCount = positions.length;
+  const openPositionsCount = filteredPositions.length;
   const totalExposure = status?.currentExposure || 0;
   const exposurePercent = totalBalance > 0 ? (totalExposure / totalBalance) * 100 : 0;
 
@@ -133,6 +139,24 @@ Are you sure you want to close this position?`;
 
       <div className="dashboard-container">
         <Header tradingActive={status?.tradingEnabled || false} />
+
+        {/* Trading Type Toggle */}
+        <div className="trading-type-toggle-container">
+          <div className="trading-type-toggle">
+            <button
+              className={`toggle-button ${tradingTypeFilter === 'SPOT' ? 'active' : ''}`}
+              onClick={() => setTradingTypeFilter('SPOT')}
+            >
+              SPOT
+            </button>
+            <button
+              className={`toggle-button ${tradingTypeFilter === 'FUTURE' ? 'active' : ''}`}
+              onClick={() => setTradingTypeFilter('FUTURE')}
+            >
+              FUTURE
+            </button>
+          </div>
+        </div>
 
         {/* Stats Grid */}
         <div className="stats-grid">
@@ -167,11 +191,11 @@ Are you sure you want to close this position?`;
             label="Open Positions"
             value={openPositionsCount.toString()}
             change={
-              positions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0) >= 0
-                ? `+$${Math.abs(positions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0)).toFixed(2)} unrealized`
-                : `-$${Math.abs(positions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0)).toFixed(2)} unrealized`
+              filteredPositions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0) >= 0
+                ? `+$${Math.abs(filteredPositions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0)).toFixed(2)} unrealized`
+                : `-$${Math.abs(filteredPositions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0)).toFixed(2)} unrealized`
             }
-            changeType={positions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0) >= 0 ? 'positive' : 'negative'}
+            changeType={filteredPositions.reduce((sum, p) => sum + (p.unrealizedPnL || 0), 0) >= 0 ? 'positive' : 'negative'}
             icon={<TargetIcon />}
             delay={0.4}
           />
@@ -213,12 +237,12 @@ Are you sure you want to close this position?`;
 
         {/* Open Positions */}
         <Panel
-          title="Open Positions"
+          title={`Open Positions (${tradingTypeFilter})`}
           icon={<TableIcon />}
           action={<span className="panel-meta">{openPositionsCount} active</span>}
           delay={0.6}
         >
-          <PositionsTable positions={positions} onClose={handleClosePosition} closingPositionId={closingPositionId} />
+          <PositionsTable positions={filteredPositions} onClose={handleClosePosition} closingPositionId={closingPositionId} />
         </Panel>
 
         {/* Footer */}
