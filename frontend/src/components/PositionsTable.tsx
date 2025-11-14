@@ -6,9 +6,10 @@ import './PositionsTable.css';
 interface PositionsTableProps {
   positions: Position[];
   onClose?: (positionId: string) => void;
+  closingPositionId?: string | null;
 }
 
-export const PositionsTable = ({ positions, onClose }: PositionsTableProps) => {
+export const PositionsTable = ({ positions, onClose, closingPositionId }: PositionsTableProps) => {
   const formatPrice = (price: number) => `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatPnL = (pnl: number, percent?: number) => {
     const sign = pnl >= 0 ? '+' : '';
@@ -77,8 +78,9 @@ export const PositionsTable = ({ positions, onClose }: PositionsTableProps) => {
                     <button
                       className="action-button"
                       onClick={() => onClose(position.id)}
+                      disabled={closingPositionId === position.id}
                     >
-                      CLOSE
+                      {closingPositionId === position.id ? 'CLOSING...' : 'CLOSE'}
                     </button>
                   )}
                 </td>

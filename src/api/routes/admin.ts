@@ -21,6 +21,10 @@ export function createAdminRouter(controller: AdminController): Router {
     controller.getPositions(req, res).catch(next);
   });
 
+  router.post('/positions/:id/close', (req, res, next) => {
+    controller.closePosition(req, res).catch(next);
+  });
+
   router.get('/orders', (req, res, next) => {
     controller.getOrders(req, res).catch(next);
   });

@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Background } from './Background';
 import { Header } from './Header';
 import { StatCard } from './StatCard';
@@ -21,6 +22,9 @@ import { apiClient } from '../lib/api';
 import './Dashboard.css';
 
 export const Dashboard = () => {
+  const queryClient = useQueryClient();
+  const [closingPositionId, setClosingPositionId] = useState<string | null>(null);
+
   // Fetch data with React Query
   const { data: status } = useQuery({
     queryKey: ['status'],
@@ -51,6 +55,48 @@ export const Dashboard = () => {
     queryFn: apiClient.getPendingSignalsCount,
     refetchInterval: 5000,
   });
+
+  // Close position mutation
+  const closePositionMutation = useMutation({
+    mutationFn: (positionId: string) => apiClient.closePosition(positionId),
+    onSuccess: () => {
+      // Refresh positions and orders list
+      queryClient.invalidateQueries({ queryKey: ['positions'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['status'] });
+      setClosingPositionId(null);
+    },
+    onError: (error) => {
+      console.error('Failed to close position:', error);
+      alert('Failed to close position: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setClosingPositionId(null);
+    },
+  });
+
+  const handleClosePosition = async (positionId: string) => {
+    const position = positions.find(p => p.id === positionId);
+    if (!position) return;
+
+    const currentPrice = position.currentPrice || position.entry_price;
+    const pnl = position.unrealizedPnL || 0;
+    const pnlPercent = ((currentPrice - position.entry_price) / position.entry_price) * 100;
+    const pnlSign = pnl >= 0 ? '+' : '';
+
+    const confirmMessage = `Close Position: ${position.symbol}
+
+Quantity: ${position.quantity} ${position.symbol.replace(/USDT|BUSD/, '')}
+Entry Price: $${position.entry_price.toFixed(2)}
+Current Price: $${currentPrice.toFixed(2)}
+Est. P&L: ${pnlSign}$${Math.abs(pnl).toFixed(2)} (${pnlSign}${pnlPercent.toFixed(2)}%)
+
+This will create a MARKET SELL order immediately.
+Are you sure you want to close this position?`;
+
+    if (confirm(confirmMessage)) {
+      setClosingPositionId(positionId);
+      closePositionMutation.mutate(positionId);
+    }
+  };
 
   const handleToggleTrading = async () => {
     try {
@@ -172,7 +218,7 @@ export const Dashboard = () => {
           action={<span className="panel-meta">{openPositionsCount} active</span>}
           delay={0.6}
         >
-          <PositionsTable positions={positions} />
+          <PositionsTable positions={positions} onClose={handleClosePosition} closingPositionId={closingPositionId} />
         </Panel>
 
         {/* Footer */}

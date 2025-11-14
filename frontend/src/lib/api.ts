@@ -50,6 +50,11 @@ export const apiClient = {
     return data;
   },
 
+  closePosition: async (positionId: string): Promise<{ success: boolean; message: string; orderId: string }> => {
+    const { data } = await api.post(`/positions/${positionId}/close`);
+    return data;
+  },
+
   // Orders
   getOrders: async (params?: {
     symbol?: string;

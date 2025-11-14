@@ -140,6 +140,66 @@ export class AdminController {
     }
   }
 
+  async closePosition(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      logger.info('Closing position', { positionId: id });
+
+      // Get position from database
+      const db = databaseService.getDatabase();
+      const position = db
+        .prepare('SELECT * FROM positions WHERE id = ?')
+        .get(id) as any;
+
+      if (!position) {
+        logger.warn('Position not found', { positionId: id });
+        return res.status(404).json({ error: 'Position not found' });
+      }
+
+      if (position.status !== 'OPEN') {
+        logger.warn('Position already closed', { positionId: id, status: position.status });
+        return res.status(400).json({
+          error: 'Position is not open',
+          status: position.status
+        });
+      }
+
+      // Create SELL order to close position
+      const orderId = await this.orderManager.executeMarketOrder(
+        {
+          symbol: position.symbol,
+          side: 'SELL',
+          type: 'MARKET',
+          quantity: position.quantity,
+          strategyId: null, // Manual close, no strategy
+        },
+        true, // riskPassed (manual close bypasses risk checks)
+        false  // isManualApproval (not from pending signals)
+      );
+
+      logger.info('Position closed successfully', {
+        positionId: id,
+        orderId,
+        symbol: position.symbol,
+        quantity: position.quantity
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Position closed successfully',
+        orderId,
+        positionId: id,
+      });
+    } catch (error) {
+      logger.error('Failed to close position', { error });
+      return res.status(500).json({
+        error: 'Failed to close position',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
   async getOrders(req: Request, res: Response) {
     try {
       const { symbol, status, limit = 100 } = req.query;
