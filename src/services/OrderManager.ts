@@ -483,7 +483,7 @@ export class OrderManager {
 
         db.prepare(
           `UPDATE positions
-           SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP
+           SET quantity = ?, entry_price = ?
            WHERE id = ?`
         ).run(totalQuantity, avgEntryPrice, existingPosition.id);
 
@@ -561,7 +561,7 @@ export class OrderManager {
 
         db.prepare(
           `UPDATE positions
-           SET quantity = ?, realized_pnl = COALESCE(realized_pnl, 0) + ?, updated_at = CURRENT_TIMESTAMP
+           SET quantity = ?, realized_pnl = COALESCE(realized_pnl, 0) + ?
            WHERE id = ?`
         ).run(remainingQuantity, realizedPnL, position.id);
 
