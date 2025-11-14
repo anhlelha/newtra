@@ -26,12 +26,18 @@ export class OrderManager {
     private signalProcessor: SignalProcessor
   ) {}
 
-  async executeFromSignal(signalId: string, signal: TradingViewSignal, strategyId?: string | null, bypassEnabledCheck: boolean = false): Promise<string> {
+  async executeFromSignal(
+    signalId: string,
+    signal: TradingViewSignal,
+    strategyId?: string | null,
+    bypassEnabledCheck: boolean = false,
+    isManualApproval: boolean = false
+  ): Promise<string> {
     const orderId = uuidv4();
     const db = databaseService.getDatabase();
 
     try {
-      logger.info('Executing order from signal', { signalId, signal, strategyId, bypassEnabledCheck });
+      logger.info('Executing order from signal', { signalId, signal, strategyId, bypassEnabledCheck, isManualApproval });
 
       // Calculate quantity
       const quantity = await this.riskManager.calculatePositionSize(signal);
@@ -110,7 +116,7 @@ export class OrderManager {
           type: 'MARKET',
           quantity,
           strategyId: strategyId || null,
-        }, riskPassed);
+        }, riskPassed, isManualApproval);
       } else {
         // Limit order
         if (!signal.price) {
@@ -124,7 +130,7 @@ export class OrderManager {
           quantity,
           price: signal.price,
           strategyId: strategyId || null,
-        }, riskPassed);
+        }, riskPassed, isManualApproval);
       }
 
       // Update signal status
@@ -145,12 +151,12 @@ export class OrderManager {
     }
   }
 
-  private async executeMarketOrder(request: OrderRequest, riskPassed: boolean = true): Promise<string> {
+  private async executeMarketOrder(request: OrderRequest, riskPassed: boolean = true, isManualApproval: boolean = false): Promise<string> {
     const orderId = uuidv4();
     const db = databaseService.getDatabase();
 
     try {
-      logger.info('Executing market order', { orderId, request });
+      logger.info('Executing market order', { orderId, request, isManualApproval });
 
       // Execute on Binance
       const binanceOrder = await this.binanceClient.createMarketOrder({
@@ -211,37 +217,45 @@ export class OrderManager {
 
       return orderId;
     } catch (error) {
-      logger.error('Market order execution failed', { orderId, error });
+      logger.error('Market order execution failed', { orderId, error, isManualApproval });
 
-      // Save failed order to database
-      const stmt = db.prepare(`
-        INSERT INTO orders (
-          id, symbol, side, type, quantity, status, error_message, strategy_id, risk_passed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      // For manual approvals, don't create REJECTED order record
+      // The pending signal will be marked as FAILED instead
+      if (!isManualApproval) {
+        // Save failed order to database
+        const stmt = db.prepare(`
+          INSERT INTO orders (
+            id, symbol, side, type, quantity, status, error_message, strategy_id, risk_passed
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
 
-      stmt.run(
-        orderId,
-        request.symbol,
-        request.side,
-        'MARKET',
-        request.quantity,
-        'REJECTED',
-        (error as Error).message,
-        request.strategyId || null,
-        riskPassed ? 1 : 0
-      );
+        stmt.run(
+          orderId,
+          request.symbol,
+          request.side,
+          'MARKET',
+          request.quantity,
+          'REJECTED',
+          (error as Error).message,
+          request.strategyId || null,
+          riskPassed ? 1 : 0
+        );
+
+        logger.info('Created REJECTED order record for automatic signal', { orderId });
+      } else {
+        logger.info('Skipping REJECTED order record for manual approval - will be marked as FAILED in pending signals', { orderId });
+      }
 
       throw error;
     }
   }
 
-  private async executeLimitOrder(request: OrderRequest, riskPassed: boolean = true): Promise<string> {
+  private async executeLimitOrder(request: OrderRequest, riskPassed: boolean = true, isManualApproval: boolean = false): Promise<string> {
     const orderId = uuidv4();
     const db = databaseService.getDatabase();
 
     try {
-      logger.info('Executing limit order', { orderId, request });
+      logger.info('Executing limit order', { orderId, request, isManualApproval });
 
       // Execute on Binance
       const binanceOrder = await this.binanceClient.createLimitOrder({
@@ -280,27 +294,35 @@ export class OrderManager {
 
       return orderId;
     } catch (error) {
-      logger.error('Limit order execution failed', { orderId, error });
+      logger.error('Limit order execution failed', { orderId, error, isManualApproval });
 
-      // Save failed order
-      const stmt = db.prepare(`
-        INSERT INTO orders (
-          id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      // For manual approvals, don't create REJECTED order record
+      // The pending signal will be marked as FAILED instead
+      if (!isManualApproval) {
+        // Save failed order to database
+        const stmt = db.prepare(`
+          INSERT INTO orders (
+            id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
 
-      stmt.run(
-        orderId,
-        request.symbol,
-        request.side,
-        'LIMIT',
-        request.quantity,
-        request.price,
-        'REJECTED',
-        (error as Error).message,
-        request.strategyId || null,
-        riskPassed ? 1 : 0
-      );
+        stmt.run(
+          orderId,
+          request.symbol,
+          request.side,
+          'LIMIT',
+          request.quantity,
+          request.price,
+          'REJECTED',
+          (error as Error).message,
+          request.strategyId || null,
+          riskPassed ? 1 : 0
+        );
+
+        logger.info('Created REJECTED order record for automatic signal', { orderId });
+      } else {
+        logger.info('Skipping REJECTED order record for manual approval - will be marked as FAILED in pending signals', { orderId });
+      }
 
       throw error;
     }

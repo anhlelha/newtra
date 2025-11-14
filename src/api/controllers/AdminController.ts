@@ -587,11 +587,13 @@ export class AdminController {
   ) {
     try {
       // Bypass risk checks for manually approved signals (when Risk Management is enabled)
+      // isManualApproval=true prevents creating REJECTED orders if Binance fails
       const orderId = await this.orderManager.executeFromSignal(
         signalId,
         signal,
         strategyId,
-        true // bypassEnabledCheck = true
+        true, // bypassEnabledCheck = true
+        true  // isManualApproval = true
       );
 
       // Update pending signal with order ID
