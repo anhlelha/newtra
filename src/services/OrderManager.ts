@@ -139,6 +139,11 @@ export class OrderManager {
         executedQty: binanceOrder.executedQty,
       });
 
+      // Create or update position if order is filled
+      if (binanceOrder.status === 'FILLED') {
+        await this.handleFilledOrder(orderId, request, avgFillPrice);
+      }
+
       return orderId;
     } catch (error) {
       logger.error('Market order execution failed', { orderId, error });
@@ -298,5 +303,137 @@ export class OrderManager {
     }
 
     return db.prepare(query).all(...params);
+  }
+
+  private async handleFilledOrder(
+    orderId: string,
+    request: OrderRequest,
+    fillPrice: number
+  ): Promise<void> {
+    try {
+      if (request.side === 'BUY') {
+        // Create new position for BUY orders
+        await this.createPosition(orderId, request, fillPrice);
+      } else if (request.side === 'SELL') {
+        // Close position for SELL orders
+        await this.closePosition(orderId, request, fillPrice);
+      }
+    } catch (error) {
+      logger.error('Failed to handle filled order', { orderId, error });
+      // Don't throw - order was executed successfully, position tracking is secondary
+    }
+  }
+
+  private async createPosition(
+    orderId: string,
+    request: OrderRequest,
+    entryPrice: number
+  ): Promise<void> {
+    const db = databaseService.getDatabase();
+    const positionId = uuidv4();
+
+    try {
+      // Check if there's already an open position for this symbol
+      const existingPosition = db
+        .prepare('SELECT * FROM positions WHERE symbol = ? AND status = ?')
+        .get(request.symbol, 'OPEN') as any;
+
+      if (existingPosition) {
+        // Update existing position - average entry price
+        const totalQuantity = existingPosition.quantity + request.quantity;
+        const totalValue =
+          existingPosition.quantity * existingPosition.entry_price +
+          request.quantity * entryPrice;
+        const avgEntryPrice = totalValue / totalQuantity;
+
+        db.prepare(
+          `UPDATE positions
+           SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        ).run(totalQuantity, avgEntryPrice, existingPosition.id);
+
+        logger.info('Updated existing position', {
+          positionId: existingPosition.id,
+          symbol: request.symbol,
+          newQuantity: totalQuantity,
+          avgEntryPrice,
+        });
+      } else {
+        // Create new position
+        db.prepare(
+          `INSERT INTO positions (
+            id, order_id, symbol, quantity, entry_price, status
+          ) VALUES (?, ?, ?, ?, ?, ?)`
+        ).run(positionId, orderId, request.symbol, request.quantity, entryPrice, 'OPEN');
+
+        logger.info('Created new position', {
+          positionId,
+          orderId,
+          symbol: request.symbol,
+          quantity: request.quantity,
+          entryPrice,
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to create position', { orderId, error });
+      throw error;
+    }
+  }
+
+  private async closePosition(
+    orderId: string,
+    request: OrderRequest,
+    exitPrice: number
+  ): Promise<void> {
+    const db = databaseService.getDatabase();
+
+    try {
+      // Find open position for this symbol
+      const position = db
+        .prepare('SELECT * FROM positions WHERE symbol = ? AND status = ?')
+        .get(request.symbol, 'OPEN') as any;
+
+      if (!position) {
+        logger.warn('No open position found to close', { symbol: request.symbol });
+        return;
+      }
+
+      // Calculate realized PnL
+      const realizedPnL = (exitPrice - position.entry_price) * request.quantity;
+
+      if (request.quantity >= position.quantity) {
+        // Close entire position
+        db.prepare(
+          `UPDATE positions
+           SET status = ?, exit_price = ?, realized_pnl = ?, closed_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        ).run('CLOSED', exitPrice, realizedPnL, position.id);
+
+        logger.info('Closed position', {
+          positionId: position.id,
+          symbol: request.symbol,
+          realizedPnL,
+        });
+      } else {
+        // Partially close position
+        const remainingQuantity = position.quantity - request.quantity;
+
+        db.prepare(
+          `UPDATE positions
+           SET quantity = ?, realized_pnl = COALESCE(realized_pnl, 0) + ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`
+        ).run(remainingQuantity, realizedPnL, position.id);
+
+        logger.info('Partially closed position', {
+          positionId: position.id,
+          symbol: request.symbol,
+          remainingQuantity,
+          realizedPnL,
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to close position', { orderId, error });
+      throw error;
+    }
   }
 }
