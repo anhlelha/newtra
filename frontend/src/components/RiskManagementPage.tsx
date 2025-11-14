@@ -85,6 +85,32 @@ export default function RiskManagementPage() {
     },
   });
 
+  // Toggle enabled mutation
+  const toggleEnabledMutation = useMutation({
+    mutationFn: (enabled: boolean) => apiClient.updateRiskConfig({ enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['riskConfig'] });
+    },
+  });
+
+  const handleToggleEnabled = () => {
+    if (!riskConfig) return;
+
+    const newEnabledState = !riskConfig.enabled;
+
+    if (!newEnabledState) {
+      // Disabling - show warning
+      const confirmed = window.confirm(
+        '⚠️ WARNING: Disabling Risk Management\n\n' +
+        'This will bypass ALL risk checks and allow orders to execute without validation.\n\n' +
+        'Are you sure you want to disable risk management?'
+      );
+      if (!confirmed) return;
+    }
+
+    toggleEnabledMutation.mutate(newEnabledState);
+  };
+
   const handleEdit = () => {
     if (riskConfig) {
       setFormData({ ...riskConfig });
@@ -103,6 +129,7 @@ export default function RiskManagementPage() {
       maxDailyLoss: formData.maxDailyLoss,
       enableStopLoss: formData.enableStopLoss,
       defaultStopLossPercent: formData.defaultStopLossPercent,
+      enabled: formData.enabled,
     });
   };
 
@@ -120,12 +147,29 @@ export default function RiskManagementPage() {
           title="Risk Management"
           icon={<GridIcon />}
           action={
-            <button
-              onClick={handleEdit}
-              className="panel-action-button"
-            >
-              ⚙ EDIT SETTINGS
-            </button>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={handleToggleEnabled}
+                disabled={toggleEnabledMutation.isPending}
+                className="panel-action-button"
+                style={{
+                  borderColor: riskConfig?.enabled ? 'var(--accent-danger)' : 'var(--accent-primary)',
+                  color: riskConfig?.enabled ? 'var(--accent-danger)' : 'var(--accent-primary)',
+                }}
+              >
+                {toggleEnabledMutation.isPending
+                  ? '...'
+                  : riskConfig?.enabled
+                  ? '⚠ DISABLE SYSTEM'
+                  : '✓ ENABLE SYSTEM'}
+              </button>
+              <button
+                onClick={handleEdit}
+                className="panel-action-button"
+              >
+                ⚙ EDIT SETTINGS
+              </button>
+            </div>
           }
           delay={0.1}
         >
@@ -147,6 +191,42 @@ export default function RiskManagementPage() {
             </div>
           ) : (
             <>
+              {/* Warning Banner when disabled */}
+              {!riskConfig.enabled && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{
+                    background: 'rgba(255, 51, 102, 0.1)',
+                    border: '2px solid var(--accent-danger)',
+                    borderRadius: '8px',
+                    padding: '1rem 1.5rem',
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                  }}
+                >
+                  <span style={{ fontSize: '2rem', color: 'var(--accent-danger)' }}>⚠️</span>
+                  <div style={{ flex: 1 }}>
+                    <h3
+                      style={{
+                        color: 'var(--accent-danger)',
+                        fontFamily: 'Syne, sans-serif',
+                        fontSize: '1.1rem',
+                        fontWeight: 700,
+                        marginBottom: '0.25rem',
+                      }}
+                    >
+                      RISK MANAGEMENT DISABLED
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
+                      All risk checks are currently bypassed. Orders will execute without validation against risk limits.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
               <div className="risk-table-container">
                 <table className="risk-table">
                   <thead>
@@ -157,12 +237,41 @@ export default function RiskManagementPage() {
                     </tr>
                   </thead>
                   <tbody>
+                    {/* System Status Row */}
+                    <motion.tr
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, delay: 0 }}
+                      style={{
+                        borderBottom: '2px solid var(--border-color)',
+                      }}
+                    >
+                      <td className="risk-param-name" style={{ fontWeight: 700, fontSize: '1.1em' }}>
+                        Risk Management System
+                      </td>
+                      <td>
+                        <span
+                          className={`risk-status-badge ${
+                            riskConfig?.enabled ? 'enabled' : 'disabled'
+                          }`}
+                          style={{ fontSize: '0.9rem', padding: '0.35rem 1rem' }}
+                        >
+                          {riskConfig?.enabled ? 'ENABLED' : 'DISABLED'}
+                        </span>
+                      </td>
+                      <td className="risk-param-description">
+                        {riskConfig?.enabled
+                          ? 'All risk checks are active. Orders will be validated against risk limits.'
+                          : 'Risk checks are bypassed. ALL orders will be executed without validation.'}
+                      </td>
+                    </motion.tr>
+
                     {riskParameters.map((param, index) => (
                       <motion.tr
                         key={param.key}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.05 }}
+                        transition={{ duration: 0.4, delay: (index + 1) * 0.05 }}
                       >
                         <td className="risk-param-name">{param.name}</td>
                         <td>
@@ -317,6 +426,49 @@ export default function RiskManagementPage() {
                     className="form-input"
                     required
                   />
+                </div>
+
+                {/* Enable Risk Management System */}
+                <div
+                  className="form-group-checkbox"
+                  style={{
+                    padding: '1rem',
+                    background: formData.enabled
+                      ? 'rgba(0, 255, 159, 0.05)'
+                      : 'rgba(255, 51, 102, 0.05)',
+                    border: formData.enabled
+                      ? '1px solid rgba(0, 255, 159, 0.2)'
+                      : '1px solid rgba(255, 51, 102, 0.2)',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    id="enabledSystem"
+                    checked={formData.enabled}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        enabled: e.target.checked,
+                      })
+                    }
+                    className="form-checkbox"
+                  />
+                  <div style={{ flex: 1 }}>
+                    <label htmlFor="enabledSystem" style={{ fontWeight: 600 }}>
+                      Enable Risk Management System
+                    </label>
+                    <p style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--text-muted)',
+                      marginTop: '0.25rem',
+                      marginLeft: '0.125rem',
+                    }}>
+                      {formData.enabled
+                        ? 'All orders will be validated against risk limits'
+                        : '⚠️ WARNING: Orders will execute without risk validation'}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Enable Stop Loss */}

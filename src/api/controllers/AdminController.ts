@@ -289,6 +289,7 @@ export class AdminController {
         maxDailyLoss,
         enableStopLoss,
         defaultStopLossPercent,
+        enabled,
       } = req.body;
 
       const db = databaseService.getDatabase();
@@ -327,6 +328,11 @@ export class AdminController {
       if (defaultStopLossPercent !== undefined) {
         stmt.run('trading.defaultStopLossPercent', JSON.stringify(defaultStopLossPercent));
         updates.defaultStopLossPercent = defaultStopLossPercent;
+      }
+
+      if (enabled !== undefined) {
+        stmt.run('trading.enabled', JSON.stringify(enabled));
+        updates.enabled = enabled;
       }
 
       logger.info('Risk configuration updated', { updates });

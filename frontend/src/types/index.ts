@@ -142,4 +142,5 @@ export interface UpdateRiskConfigInput {
   maxDailyLoss?: number;
   enableStopLoss?: boolean;
   defaultStopLossPercent?: number;
+  enabled?: boolean;
 }
