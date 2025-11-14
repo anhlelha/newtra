@@ -225,6 +225,8 @@ export class AdminController {
 
       const configRows = stmt.all() as Array<{ key: string; value: string }>;
 
+      logger.info('getRiskConfig - DB rows:', { count: configRows.length, rows: configRows });
+
       const riskConfig = {
         defaultPositionSizePercent: config.trading.defaultPositionSizePercent,
         maxPositionSizePercent: config.trading.maxPositionSizePercent,
@@ -234,6 +236,8 @@ export class AdminController {
         defaultStopLossPercent: config.trading.defaultStopLossPercent,
         enabled: config.trading.enabled,
       };
+
+      logger.info('getRiskConfig - Initial (from config file):', { enabled: riskConfig.enabled });
 
       // Override with database values if they exist
       for (const row of configRows) {
@@ -268,10 +272,13 @@ export class AdminController {
             riskConfig.defaultStopLossPercent = value;
             break;
           case 'trading.enabled':
+            logger.info('getRiskConfig - Setting enabled from DB:', { value, parsedValue: value });
             riskConfig.enabled = value;
             break;
         }
       }
+
+      logger.info('getRiskConfig - Final riskConfig:', { enabled: riskConfig.enabled });
 
       return res.status(200).json(riskConfig);
     } catch (error) {
