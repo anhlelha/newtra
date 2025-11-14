@@ -166,16 +166,10 @@ export class AdminController {
       }
 
       // Create SELL order to close position
-      const orderId = await this.orderManager.executeMarketOrder(
-        {
-          symbol: position.symbol,
-          side: 'SELL',
-          type: 'MARKET',
-          quantity: position.quantity,
-          strategyId: null, // Manual close, no strategy
-        },
-        true, // riskPassed (manual close bypasses risk checks)
-        false  // isManualApproval (not from pending signals)
+      const orderId = await this.orderManager.closePositionWithOrder(
+        position.id,
+        position.symbol,
+        position.quantity
       );
 
       logger.info('Position closed successfully', {
@@ -185,7 +179,7 @@ export class AdminController {
         quantity: position.quantity
       });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: 'Position closed successfully',
         orderId,

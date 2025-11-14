@@ -151,6 +151,34 @@ export class OrderManager {
     }
   }
 
+  /**
+   * Close a position by creating a MARKET SELL order
+   * This is a public method that can be called from AdminController
+   */
+  async closePositionWithOrder(
+    positionId: string,
+    symbol: string,
+    quantity: number
+  ): Promise<string> {
+    logger.info('Closing position with market order', { positionId, symbol, quantity });
+
+    // Create SELL order to close position
+    const orderId = await this.executeMarketOrder(
+      {
+        symbol,
+        side: 'SELL',
+        type: 'MARKET',
+        quantity,
+        strategyId: null,
+      },
+      true, // riskPassed = true (manual close, bypass risk checks)
+      false // isManualApproval = false (not from pending signals)
+    );
+
+    logger.info('Position closed with order', { positionId, orderId });
+    return orderId;
+  }
+
   private async executeMarketOrder(request: OrderRequest, riskPassed: boolean = true, isManualApproval: boolean = false): Promise<string> {
     const orderId = uuidv4();
     const db = databaseService.getDatabase();
