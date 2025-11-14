@@ -41,7 +41,8 @@ export class OrderManager {
       const riskPassed = riskCheck.allowed;
 
       if (!riskPassed) {
-        // Create REJECTED order record so it's visible in UI
+        // Risk check failed - create REJECTED order record so it's visible in UI
+        // Note: This only happens when Risk Management is ENABLED
         const side = this.getOrderSide(signal);
 
         logger.info('[REJECTED ORDER] Creating REJECTED order record', {

@@ -55,13 +55,26 @@ export class RiskManager {
       // Get current risk config from database
       const riskConfig = this.getRiskConfig();
 
-      // Check if trading is enabled (can be bypassed for manually approved signals)
-      if (!bypassEnabledCheck && !riskConfig.enabled) {
+      // If Risk Management is disabled, bypass all checks
+      if (!riskConfig.enabled) {
+        logger.info('Risk Management is disabled, bypassing all risk checks');
         return {
-          allowed: false,
-          reason: 'Trading is disabled',
+          allowed: true,
+          calculatedQuantity,
         };
       }
+
+      // If manual approval bypass is requested, skip checks
+      if (bypassEnabledCheck) {
+        logger.info('Manual approval bypass enabled, skipping risk checks');
+        return {
+          allowed: true,
+          calculatedQuantity,
+        };
+      }
+
+      // Risk Management is enabled - run all checks
+      logger.info('Risk Management is enabled, running risk checks');
 
       // Get current price
       const currentPrice = await this.binanceClient.getPrice(signal.symbol);

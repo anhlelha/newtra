@@ -586,7 +586,7 @@ export class AdminController {
     strategyId?: string
   ) {
     try {
-      // Bypass "trading is disabled" check for manually approved signals
+      // Bypass risk checks for manually approved signals (when Risk Management is enabled)
       const orderId = await this.orderManager.executeFromSignal(
         signalId,
         signal,
