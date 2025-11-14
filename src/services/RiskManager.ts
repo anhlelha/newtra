@@ -15,6 +15,33 @@ export interface RiskCheckResult {
 export class RiskManager {
   constructor(private binanceClient: BinanceClient) {}
 
+  /**
+   * Get current risk configuration from database
+   */
+  private getRiskConfig() {
+    const db = databaseService.getDatabase();
+
+    const getConfigValue = (key: string, defaultValue: any) => {
+      const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | undefined;
+      if (!row) return defaultValue;
+
+      // Try to parse as JSON first (for boolean/number values stored as JSON)
+      try {
+        return JSON.parse(row.value);
+      } catch {
+        // If not JSON, return as-is and let caller parse
+        return row.value;
+      }
+    };
+
+    return {
+      enabled: getConfigValue('trading.enabled', config.trading.enabled),
+      maxPositionSizePercent: parseFloat(getConfigValue('trading.maxPositionSizePercent', config.trading.maxPositionSizePercent)),
+      maxTotalExposurePercent: parseFloat(getConfigValue('trading.maxTotalExposurePercent', config.trading.maxTotalExposurePercent)),
+      maxDailyLoss: parseFloat(getConfigValue('trading.maxDailyLoss', config.trading.maxDailyLoss)),
+    };
+  }
+
   async checkRiskLimits(
     signal: TradingViewSignal,
     calculatedQuantity: number
@@ -22,8 +49,11 @@ export class RiskManager {
     try {
       logger.info('Checking risk limits', { signal, calculatedQuantity });
 
+      // Get current risk config from database
+      const riskConfig = this.getRiskConfig();
+
       // Check if trading is enabled
-      if (!config.trading.enabled) {
+      if (!riskConfig.enabled) {
         return {
           allowed: false,
           reason: 'Trading is disabled',
@@ -43,11 +73,11 @@ export class RiskManager {
 
       // Check position size limit
       const positionSizePercent = (orderValue / availableBalance) * 100;
-      if (positionSizePercent > config.trading.maxPositionSizePercent) {
+      if (positionSizePercent > riskConfig.maxPositionSizePercent) {
         return {
           allowed: false,
           reason: `Position size ${positionSizePercent.toFixed(2)}% exceeds max ${
-            config.trading.maxPositionSizePercent
+            riskConfig.maxPositionSizePercent
           }%`,
         };
       }
@@ -57,22 +87,22 @@ export class RiskManager {
       const totalExposure = currentExposure + orderValue;
       const exposurePercent = (totalExposure / availableBalance) * 100;
 
-      if (exposurePercent > config.trading.maxTotalExposurePercent) {
+      if (exposurePercent > riskConfig.maxTotalExposurePercent) {
         return {
           allowed: false,
           reason: `Total exposure ${exposurePercent.toFixed(2)}% exceeds max ${
-            config.trading.maxTotalExposurePercent
+            riskConfig.maxTotalExposurePercent
           }%`,
         };
       }
 
       // Check daily loss limit
       const dailyLoss = await this.getDailyLoss();
-      if (Math.abs(dailyLoss) > config.trading.maxDailyLoss) {
+      if (Math.abs(dailyLoss) > riskConfig.maxDailyLoss) {
         return {
           allowed: false,
           reason: `Daily loss $${Math.abs(dailyLoss).toFixed(2)} exceeds max $${
-            config.trading.maxDailyLoss
+            riskConfig.maxDailyLoss
           }`,
         };
       }
