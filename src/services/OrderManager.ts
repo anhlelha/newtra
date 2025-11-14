@@ -448,7 +448,13 @@ export class OrderManager {
         await this.closePosition(orderId, request, fillPrice);
       }
     } catch (error) {
-      logger.error('Failed to handle filled order', { orderId, error });
+      logger.error('Failed to handle filled order', {
+        orderId,
+        side: request.side,
+        error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       // Don't throw - order was executed successfully, position tracking is secondary
     }
   }
@@ -505,7 +511,12 @@ export class OrderManager {
         });
       }
     } catch (error) {
-      logger.error('Failed to create position', { orderId, error });
+      logger.error('Failed to create position', {
+        orderId,
+        error,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       throw error;
     }
   }
