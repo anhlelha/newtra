@@ -8,6 +8,8 @@ export interface Strategy {
   id: string;
   name: string;
   type: 'automatic' | 'manual';
+  trading_type: 'SPOT' | 'FUTURE';
+  leverage: number;
   description?: string;
   enabled: boolean;
   created_at: string;
@@ -17,6 +19,8 @@ export interface Strategy {
 export interface CreateStrategyInput {
   name: string;
   type: 'automatic' | 'manual';
+  trading_type?: 'SPOT' | 'FUTURE';
+  leverage?: number;
   description?: string;
   enabled?: boolean;
 }
@@ -24,6 +28,8 @@ export interface CreateStrategyInput {
 export interface UpdateStrategyInput {
   name?: string;
   type?: 'automatic' | 'manual';
+  trading_type?: 'SPOT' | 'FUTURE';
+  leverage?: number;
   description?: string;
   enabled?: boolean;
 }
@@ -113,21 +119,29 @@ export class StrategyService {
     const now = new Date().toISOString();
 
     const stmt = this.db.prepare(`
-      INSERT INTO strategies (id, name, type, description, enabled, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO strategies (id, name, type, trading_type, leverage, description, enabled, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       id,
       input.name,
       input.type,
+      input.trading_type || 'SPOT',
+      input.leverage || 5,
       input.description || null,
       input.enabled !== undefined ? (input.enabled ? 1 : 0) : 1,
       now,
       now
     );
 
-    logger.info('Strategy created', { id, name: input.name, type: input.type });
+    logger.info('Strategy created', {
+      id,
+      name: input.name,
+      type: input.type,
+      trading_type: input.trading_type || 'SPOT',
+      leverage: input.leverage || 5
+    });
 
     return this.getStrategyById(id)!;
   }
@@ -153,6 +167,16 @@ export class StrategyService {
     if (input.type !== undefined) {
       updates.push('type = ?');
       values.push(input.type);
+    }
+
+    if (input.trading_type !== undefined) {
+      updates.push('trading_type = ?');
+      values.push(input.trading_type);
+    }
+
+    if (input.leverage !== undefined) {
+      updates.push('leverage = ?');
+      values.push(input.leverage);
     }
 
     if (input.description !== undefined) {

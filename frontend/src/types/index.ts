@@ -8,6 +8,8 @@ export interface Position {
   id: string;
   symbol: string;
   side: 'LONG' | 'SHORT';
+  trading_type: 'SPOT' | 'FUTURE';
+  leverage?: number;
   entry_price: number;
   quantity: number;
   stop_loss_price?: number;
@@ -15,6 +17,7 @@ export interface Position {
   entry_order_id: string;
   exit_order_id?: string;
   realized_pnl: number;
+  liquidation_price?: number;
   status: 'OPEN' | 'CLOSED';
   opened_at: string;
   closed_at?: string;
@@ -28,6 +31,7 @@ export interface Order {
   symbol: string;
   side: 'BUY' | 'SELL';
   type: 'MARKET' | 'LIMIT' | 'STOP_LOSS' | 'STOP_LOSS_LIMIT';
+  trading_type: 'SPOT' | 'FUTURE';
   quantity: number;
   price?: number;
   stop_price?: number;
@@ -86,6 +90,8 @@ export interface Strategy {
   id: string;
   name: string;
   type: 'automatic' | 'manual';
+  trading_type: 'SPOT' | 'FUTURE';
+  leverage: number;
   description?: string;
   enabled: boolean;
   created_at: string;
@@ -114,6 +120,8 @@ export interface PendingSignal {
 export interface CreateStrategyInput {
   name: string;
   type: 'automatic' | 'manual';
+  trading_type?: 'SPOT' | 'FUTURE';
+  leverage?: number;
   description?: string;
   enabled?: boolean;
 }
@@ -121,6 +129,8 @@ export interface CreateStrategyInput {
 export interface UpdateStrategyInput {
   name?: string;
   type?: 'automatic' | 'manual';
+  trading_type?: 'SPOT' | 'FUTURE';
+  leverage?: number;
   description?: string;
   enabled?: boolean;
 }
