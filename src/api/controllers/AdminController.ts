@@ -530,7 +530,11 @@ export class AdminController {
 
       // Execute the approved signal
       const signalData = JSON.parse(pendingSignal.signal_data);
-      this.executeApprovedSignalAsync(pendingSignal.signal_id, signalData);
+      this.executeApprovedSignalAsync(
+        pendingSignal.signal_id,
+        signalData,
+        pendingSignal.strategy_id
+      );
 
       return res.status(200).json(pendingSignal);
     } catch (error) {
@@ -555,10 +559,22 @@ export class AdminController {
     }
   }
 
-  private async executeApprovedSignalAsync(signalId: string, signal: any) {
+  private async executeApprovedSignalAsync(
+    signalId: string,
+    signal: any,
+    strategyId?: string
+  ) {
     try {
-      const orderId = await this.orderManager.executeFromSignal(signalId, signal);
-      logger.info('Order executed from approved signal', { signalId, orderId });
+      const orderId = await this.orderManager.executeFromSignal(
+        signalId,
+        signal,
+        strategyId
+      );
+      logger.info('Order executed from approved signal', {
+        signalId,
+        orderId,
+        strategyId,
+      });
     } catch (error) {
       logger.error('Failed to execute order from approved signal', {
         signalId,
