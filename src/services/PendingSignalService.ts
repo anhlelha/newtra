@@ -16,7 +16,9 @@ export interface PendingSignal {
   price: number | null;
   quantity: number | null;
   signal_data: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'failed';
+  error_message: string | null;
+  order_id: string | null;
   created_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
@@ -109,7 +111,7 @@ export class PendingSignalService {
    * Get all pending signals with any status
    */
   getAllPendingSignals(
-    status?: 'pending' | 'approved' | 'rejected',
+    status?: 'pending' | 'approved' | 'rejected' | 'failed',
     strategyId?: string
   ): PendingSignal[] {
     let query = `
@@ -222,6 +224,52 @@ export class PendingSignalService {
   }
 
   /**
+   * Mark a pending signal as failed with error message
+   */
+  markAsFailed(id: string, errorMessage: string): PendingSignal | null {
+    const signal = this.getPendingSignalById(id);
+    if (!signal) {
+      logger.warn('Pending signal not found', { id });
+      return null;
+    }
+
+    const stmt = this.db.prepare(`
+      UPDATE pending_signals
+      SET status = 'failed', error_message = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(errorMessage, id);
+
+    logger.info('Pending signal marked as failed', { id, errorMessage });
+
+    return this.getPendingSignalById(id);
+  }
+
+  /**
+   * Update pending signal with order ID after successful execution
+   */
+  updateOrderId(id: string, orderId: string): PendingSignal | null {
+    const signal = this.getPendingSignalById(id);
+    if (!signal) {
+      logger.warn('Pending signal not found', { id });
+      return null;
+    }
+
+    const stmt = this.db.prepare(`
+      UPDATE pending_signals
+      SET order_id = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(orderId, id);
+
+    logger.info('Pending signal order ID updated', { id, orderId });
+
+    return this.getPendingSignalById(id);
+  }
+
+  /**
    * Delete old reviewed signals (cleanup)
    */
   cleanupOldSignals(daysOld: number = 30): number {
@@ -230,7 +278,7 @@ export class PendingSignalService {
 
     const stmt = this.db.prepare(`
       DELETE FROM pending_signals
-      WHERE status IN ('approved', 'rejected')
+      WHERE status IN ('approved', 'rejected', 'failed')
       AND reviewed_at < ?
     `);
 

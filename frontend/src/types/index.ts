@@ -103,7 +103,9 @@ export interface PendingSignal {
   price: number | null;
   quantity: number | null;
   signal_data: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'failed';
+  error_message: string | null;
+  order_id: string | null;
   created_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;

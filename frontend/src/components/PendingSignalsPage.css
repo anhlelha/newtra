@@ -160,6 +160,22 @@
   border: 1px solid #ff4560;
 }
 
+.status-badge.failed {
+  background: rgba(255, 69, 96, 0.2);
+  color: #ff4560;
+  border: 1px solid #ff4560;
+  animation: pulse-error 2s ease-in-out infinite;
+}
+
+@keyframes pulse-error {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 /* Date Column */
 .signal-date {
   font-family: 'Courier New', monospace;
@@ -265,6 +281,41 @@
   background: rgba(0, 255, 159, 0.15);
   color: var(--accent-primary);
   border-color: var(--accent-primary);
+}
+
+/* Error Row */
+.error-row {
+  background: rgba(255, 69, 96, 0.05);
+  border-bottom: 1px solid rgba(255, 69, 96, 0.2);
+}
+
+.error-row:hover {
+  background: rgba(255, 69, 96, 0.05);
+  transform: none;
+}
+
+.error-cell {
+  padding: 12px 16px !important;
+}
+
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #ff4560;
+}
+
+.error-icon {
+  font-size: 16px;
+  animation: pulse-error 2s ease-in-out infinite;
+}
+
+.error-text {
+  flex: 1;
+  line-height: 1.5;
+  letter-spacing: 0.3px;
 }
 
 /* Responsive */

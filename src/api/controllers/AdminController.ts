@@ -531,6 +531,7 @@ export class AdminController {
       // Execute the approved signal
       const signalData = JSON.parse(pendingSignal.signal_data);
       this.executeApprovedSignalAsync(
+        id,
         pendingSignal.signal_id,
         signalData,
         pendingSignal.strategy_id
@@ -560,6 +561,7 @@ export class AdminController {
   }
 
   private async executeApprovedSignalAsync(
+    pendingSignalId: string,
     signalId: string,
     signal: any,
     strategyId?: string
@@ -570,13 +572,23 @@ export class AdminController {
         signal,
         strategyId
       );
+
+      // Update pending signal with order ID
+      this.pendingSignalService.updateOrderId(pendingSignalId, orderId);
+
       logger.info('Order executed from approved signal', {
+        pendingSignalId,
         signalId,
         orderId,
         strategyId,
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Mark pending signal as failed with error message
+      const errorMessage = error?.error?.message || error?.message || 'Unknown error';
+      this.pendingSignalService.markAsFailed(pendingSignalId, errorMessage);
+
       logger.error('Failed to execute order from approved signal', {
+        pendingSignalId,
         signalId,
         error,
       });

@@ -10,7 +10,7 @@ import './PendingSignalsPage.css';
 
 export default function PendingSignalsPage() {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>(
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'failed' | 'all'>(
     'pending'
   );
 
@@ -64,7 +64,7 @@ export default function PendingSignalsPage() {
           icon={<ClockIcon />}
           action={
             <div className="filter-tabs">
-              {(['pending', 'approved', 'rejected', 'all'] as const).map((status) => (
+              {(['pending', 'approved', 'rejected', 'failed', 'all'] as const).map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilter(status)}
@@ -99,6 +99,7 @@ export default function PendingSignalsPage() {
                 </thead>
                 <tbody>
                   {signals.map((signal, index) => (
+                    <>
                       <motion.tr
                         key={signal.id}
                         initial={{ opacity: 0, x: -20 }}
@@ -161,6 +162,17 @@ export default function PendingSignalsPage() {
                           )}
                         </td>
                       </motion.tr>
+                      {signal.status === 'failed' && signal.error_message && (
+                        <tr className="error-row" key={`${signal.id}-error`}>
+                          <td colSpan={9} className="error-cell">
+                            <div className="error-message">
+                              <span className="error-icon">⚠</span>
+                              <span className="error-text">{signal.error_message}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>
