@@ -16,6 +16,7 @@ export interface OrderRequest {
   quantity: number;
   price?: number;
   stopPrice?: number;
+  strategyId?: string | null;
 }
 
 export class OrderManager {
@@ -25,17 +26,18 @@ export class OrderManager {
     private signalProcessor: SignalProcessor
   ) {}
 
-  async executeFromSignal(signalId: string, signal: TradingViewSignal): Promise<string> {
+  async executeFromSignal(signalId: string, signal: TradingViewSignal, strategyId?: string | null): Promise<string> {
     try {
-      logger.info('Executing order from signal', { signalId, signal });
+      logger.info('Executing order from signal', { signalId, signal, strategyId });
 
       // Calculate quantity
       const quantity = await this.riskManager.calculatePositionSize(signal);
 
       // Check risk limits
       const riskCheck = await this.riskManager.checkRiskLimits(signal, quantity);
+      const riskPassed = riskCheck.allowed;
 
-      if (!riskCheck.allowed) {
+      if (!riskPassed) {
         throw new RiskLimitExceededError(riskCheck.reason!);
       }
 
@@ -51,7 +53,8 @@ export class OrderManager {
           side,
           type: 'MARKET',
           quantity,
-        });
+          strategyId: strategyId || null,
+        }, riskPassed);
       } else {
         // Limit order
         if (!signal.price) {
@@ -64,7 +67,8 @@ export class OrderManager {
           type: 'LIMIT',
           quantity,
           price: signal.price,
-        });
+          strategyId: strategyId || null,
+        }, riskPassed);
       }
 
       // Update signal status
@@ -83,7 +87,7 @@ export class OrderManager {
     }
   }
 
-  private async executeMarketOrder(request: OrderRequest): Promise<string> {
+  private async executeMarketOrder(request: OrderRequest, riskPassed: boolean = true): Promise<string> {
     const orderId = uuidv4();
     const db = databaseService.getDatabase();
 
@@ -114,8 +118,9 @@ export class OrderManager {
       const stmt = db.prepare(`
         INSERT INTO orders (
           id, binance_order_id, symbol, side, type, quantity,
-          status, filled_quantity, avg_fill_price, commission, commission_asset
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          status, filled_quantity, avg_fill_price, commission, commission_asset,
+          strategy_id, risk_passed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -129,7 +134,9 @@ export class OrderManager {
         binanceOrder.executedQty,
         avgFillPrice,
         commission,
-        commissionAsset
+        commissionAsset,
+        request.strategyId || null,
+        riskPassed ? 1 : 0
       );
 
       logger.info('Market order executed and saved', {
@@ -151,8 +158,8 @@ export class OrderManager {
       // Save failed order to database
       const stmt = db.prepare(`
         INSERT INTO orders (
-          id, symbol, side, type, quantity, status, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          id, symbol, side, type, quantity, status, error_message, strategy_id, risk_passed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -162,14 +169,16 @@ export class OrderManager {
         'MARKET',
         request.quantity,
         'REJECTED',
-        (error as Error).message
+        (error as Error).message,
+        request.strategyId || null,
+        riskPassed ? 1 : 0
       );
 
       throw error;
     }
   }
 
-  private async executeLimitOrder(request: OrderRequest): Promise<string> {
+  private async executeLimitOrder(request: OrderRequest, riskPassed: boolean = true): Promise<string> {
     const orderId = uuidv4();
     const db = databaseService.getDatabase();
 
@@ -187,8 +196,9 @@ export class OrderManager {
       // Save to database
       const stmt = db.prepare(`
         INSERT INTO orders (
-          id, binance_order_id, symbol, side, type, quantity, price, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          id, binance_order_id, symbol, side, type, quantity, price, status,
+          strategy_id, risk_passed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -199,7 +209,9 @@ export class OrderManager {
         'LIMIT',
         request.quantity,
         request.price,
-        binanceOrder.status
+        binanceOrder.status,
+        request.strategyId || null,
+        riskPassed ? 1 : 0
       );
 
       logger.info('Limit order executed and saved', {
@@ -215,8 +227,8 @@ export class OrderManager {
       // Save failed order
       const stmt = db.prepare(`
         INSERT INTO orders (
-          id, symbol, side, type, quantity, price, status, error_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          id, symbol, side, type, quantity, price, status, error_message, strategy_id, risk_passed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -227,7 +239,9 @@ export class OrderManager {
         request.quantity,
         request.price,
         'REJECTED',
-        (error as Error).message
+        (error as Error).message,
+        request.strategyId || null,
+        riskPassed ? 1 : 0
       );
 
       throw error;
@@ -282,20 +296,27 @@ export class OrderManager {
   async getOrders(filters?: { symbol?: string; status?: string; limit?: number }) {
     const db = databaseService.getDatabase();
 
-    let query = 'SELECT * FROM orders WHERE 1=1';
+    let query = `
+      SELECT
+        o.*,
+        s.name as strategy_name
+      FROM orders o
+      LEFT JOIN strategies s ON o.strategy_id = s.id
+      WHERE 1=1
+    `;
     const params: any[] = [];
 
     if (filters?.symbol) {
-      query += ' AND symbol = ?';
+      query += ' AND o.symbol = ?';
       params.push(filters.symbol);
     }
 
     if (filters?.status) {
-      query += ' AND status = ?';
+      query += ' AND o.status = ?';
       params.push(filters.status);
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY o.created_at DESC';
 
     if (filters?.limit) {
       query += ' LIMIT ?';

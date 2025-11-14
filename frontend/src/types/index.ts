@@ -38,6 +38,9 @@ export interface Order {
   commission_asset?: string;
   signal_data?: string;
   error_message?: string;
+  strategy_id?: string | null;
+  strategy_name?: string | null;
+  risk_passed?: boolean;
   created_at: string;
   updated_at: string;
 }

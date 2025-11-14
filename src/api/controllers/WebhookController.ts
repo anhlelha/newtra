@@ -47,7 +47,7 @@ export class WebhookController {
         this.createPendingSignalAsync(result.signalId, result.strategyId, signal);
       } else {
         // Automatic strategy: execute order immediately
-        this.executeOrderAsync(result.signalId, signal);
+        this.executeOrderAsync(result.signalId, result.strategyId, signal);
       }
     } catch (error) {
       logger.error('Webhook processing failed', { error });
@@ -81,13 +81,14 @@ export class WebhookController {
     }
   }
 
-  private async executeOrderAsync(signalId: string, signal: any) {
+  private async executeOrderAsync(signalId: string, strategyId: string | null, signal: any) {
     try {
-      const orderId = await this.orderManager.executeFromSignal(signalId, signal);
-      logger.info('Order executed from webhook', { signalId, orderId });
+      const orderId = await this.orderManager.executeFromSignal(signalId, signal, strategyId);
+      logger.info('Order executed from webhook', { signalId, orderId, strategyId });
     } catch (error) {
       logger.error('Failed to execute order from webhook', {
         signalId,
+        strategyId,
         error,
       });
     }

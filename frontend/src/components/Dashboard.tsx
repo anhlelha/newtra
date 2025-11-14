@@ -5,8 +5,7 @@ import { StatCard } from './StatCard';
 import { Panel } from './Panel';
 import { PnLChart } from './PnLChart';
 import { PositionsTable } from './PositionsTable';
-import { OrdersList } from './OrdersList';
-import { SignalsList } from './SignalsList';
+import { OrdersTable } from './OrdersTable';
 import { TradingControls } from './TradingControls';
 import {
   WalletIcon,
@@ -45,12 +44,6 @@ export const Dashboard = () => {
     queryKey: ['balance'],
     queryFn: () => apiClient.getBalance('USDT'),
     refetchInterval: 10000,
-  });
-
-  const { data: signals = [] } = useQuery({
-    queryKey: ['signals'],
-    queryFn: () => apiClient.getSignals(20),
-    refetchInterval: 5000,
   });
 
   const { data: pendingSignalsCount } = useQuery({
@@ -169,7 +162,7 @@ export const Dashboard = () => {
           action={<span className="panel-meta">{orders.length} total</span>}
           delay={0.55}
         >
-          <OrdersList orders={orders} />
+          <OrdersTable orders={orders} />
         </Panel>
 
         {/* Open Positions */}
@@ -180,16 +173,6 @@ export const Dashboard = () => {
           delay={0.6}
         >
           <PositionsTable positions={positions} />
-        </Panel>
-
-        {/* Trading Signals History */}
-        <Panel
-          title="Trading Signals"
-          icon={<GridIcon />}
-          action={<span className="panel-meta">{signals.length} received</span>}
-          delay={0.65}
-        >
-          <SignalsList signals={signals} />
         </Panel>
 
         {/* Footer */}
