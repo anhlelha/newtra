@@ -81,3 +81,50 @@ export interface Stats24hr {
   highPrice: string;
   lowPrice: string;
 }
+
+// Futures Trading Types
+export interface FuturesMarketOrderParams {
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  quantity: number;
+  positionSide?: 'LONG' | 'SHORT' | 'BOTH';
+}
+
+export interface FuturesAccountInfo {
+  totalWalletBalance: string;
+  totalUnrealizedProfit: string;
+  totalMarginBalance: string;
+  availableBalance: string;
+  maxWithdrawAmount: string;
+  assets: FuturesAsset[];
+  positions: FuturesPosition[];
+}
+
+export interface FuturesAsset {
+  asset: string;
+  walletBalance: string;
+  unrealizedProfit: string;
+  marginBalance: string;
+  availableBalance: string;
+  crossWalletBalance: string;
+  crossUnrealizedPnL: string;
+  maxWithdrawAmount: string;
+}
+
+export interface FuturesPosition {
+  symbol: string;
+  positionAmt: string;
+  entryPrice: string;
+  markPrice: string;
+  unrealizedProfit: string;
+  liquidationPrice: string;
+  leverage: string;
+  marginType: string;
+  positionSide: 'LONG' | 'SHORT' | 'BOTH';
+}
+
+export interface FuturesBalance {
+  asset: string;
+  balance: string;
+  availableBalance: string;
+}

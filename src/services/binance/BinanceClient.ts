@@ -12,6 +12,10 @@ import {
   Order,
   TickerPrice,
   Stats24hr,
+  FuturesMarketOrderParams,
+  FuturesAccountInfo,
+  FuturesBalance,
+  FuturesPosition,
 } from './types';
 
 const logger = createModuleLogger('BinanceClient');
@@ -256,6 +260,132 @@ export class BinanceClient {
       return orders.map((order) => this.mapOrder(order));
     } catch (error) {
       throw this.handleBinanceError(error, 'getOpenOrders');
+    }
+  }
+
+  // ========== Futures Trading ==========
+
+  async setFuturesLeverage(symbol: string, leverage: number): Promise<void> {
+    try {
+      logger.info('Setting futures leverage', { symbol, leverage });
+
+      await this.retryWithBackoff(() =>
+        this.client.futuresLeverage({
+          symbol,
+          leverage,
+        })
+      );
+
+      logger.info('Futures leverage set', { symbol, leverage });
+    } catch (error) {
+      logger.error('Failed to set futures leverage', { symbol, leverage, error });
+      throw this.handleBinanceError(error, 'setFuturesLeverage');
+    }
+  }
+
+  async createFuturesMarketOrder(params: FuturesMarketOrderParams): Promise<Order> {
+    try {
+      logger.info('Creating futures market order', params);
+
+      const order = await this.retryWithBackoff(() =>
+        this.client.futuresOrder({
+          symbol: params.symbol,
+          side: params.side,
+          type: 'MARKET',
+          quantity: params.quantity.toString(),
+          positionSide: params.positionSide,
+        })
+      );
+
+      logger.info('Futures market order created', {
+        orderId: order.orderId,
+        symbol: params.symbol,
+        status: order.status,
+      });
+
+      return this.mapOrder(order);
+    } catch (error) {
+      logger.error('Failed to create futures market order', { params, error });
+      throw this.handleBinanceError(error, 'createFuturesMarketOrder');
+    }
+  }
+
+  async getFuturesAccountInfo(): Promise<FuturesAccountInfo> {
+    try {
+      const account = await this.retryWithBackoff(() => this.client.futuresAccountInfo());
+
+      return {
+        totalWalletBalance: account.totalWalletBalance,
+        totalUnrealizedProfit: account.totalUnrealizedProfit,
+        totalMarginBalance: account.totalMarginBalance,
+        availableBalance: account.availableBalance,
+        maxWithdrawAmount: account.maxWithdrawAmount,
+        assets: account.assets.map((asset: any) => ({
+          asset: asset.asset,
+          walletBalance: asset.walletBalance,
+          unrealizedProfit: asset.unrealizedProfit,
+          marginBalance: asset.marginBalance,
+          availableBalance: asset.availableBalance,
+          crossWalletBalance: asset.crossWalletBalance,
+          crossUnrealizedPnL: asset.crossUnPnl,
+          maxWithdrawAmount: asset.maxWithdrawAmount,
+        })),
+        positions: account.positions.map((pos: any) => ({
+          symbol: pos.symbol,
+          positionAmt: pos.positionAmt,
+          entryPrice: pos.entryPrice,
+          markPrice: pos.markPrice,
+          unrealizedProfit: pos.unrealizedProfit,
+          liquidationPrice: pos.liquidationPrice,
+          leverage: pos.leverage,
+          marginType: pos.marginType,
+          positionSide: pos.positionSide,
+        })),
+      };
+    } catch (error) {
+      throw this.handleBinanceError(error, 'getFuturesAccountInfo');
+    }
+  }
+
+  async getFuturesBalance(asset: string = 'USDT'): Promise<FuturesBalance> {
+    try {
+      const account = await this.getFuturesAccountInfo();
+      const assetBalance = account.assets.find((a) => a.asset === asset);
+
+      if (!assetBalance) {
+        return {
+          asset,
+          balance: '0',
+          availableBalance: '0',
+        };
+      }
+
+      return {
+        asset,
+        balance: assetBalance.walletBalance,
+        availableBalance: assetBalance.availableBalance,
+      };
+    } catch (error) {
+      throw this.handleBinanceError(error, 'getFuturesBalance');
+    }
+  }
+
+  async getFuturesPositions(symbol?: string): Promise<FuturesPosition[]> {
+    try {
+      const account = await this.getFuturesAccountInfo();
+
+      // Filter positions with non-zero position amount
+      let positions = account.positions.filter(
+        (pos) => parseFloat(pos.positionAmt) !== 0
+      );
+
+      if (symbol) {
+        positions = positions.filter((pos) => pos.symbol === symbol);
+      }
+
+      return positions;
+    } catch (error) {
+      throw this.handleBinanceError(error, 'getFuturesPositions');
     }
   }
 
