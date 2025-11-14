@@ -67,11 +67,13 @@ export default function RiskManagementPage() {
   const [formData, setFormData] = useState<RiskConfig | null>(null);
 
   // Fetch risk config
-  const { data: riskConfig, isLoading } = useQuery({
+  const { data: riskConfig, isLoading, error } = useQuery({
     queryKey: ['riskConfig'],
     queryFn: apiClient.getRiskConfig,
     refetchInterval: 10000,
   });
+
+  console.log('RiskManagementPage render:', { riskConfig, isLoading, error });
 
   // Update risk config mutation
   const updateMutation = useMutation({
@@ -130,6 +132,18 @@ export default function RiskManagementPage() {
           {isLoading ? (
             <div className="risk-loading">
               <div className="loading-text">LOADING...</div>
+            </div>
+          ) : error ? (
+            <div className="risk-loading">
+              <div className="loading-text" style={{ color: 'var(--accent-danger)' }}>
+                ERROR: {error instanceof Error ? error.message : 'Failed to load risk config'}
+              </div>
+            </div>
+          ) : !riskConfig ? (
+            <div className="risk-loading">
+              <div className="loading-text" style={{ color: 'var(--text-muted)' }}>
+                No risk configuration found
+              </div>
             </div>
           ) : (
             <>
