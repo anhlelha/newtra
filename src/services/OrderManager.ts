@@ -463,14 +463,15 @@ export class OrderManager {
         // Create new position
         db.prepare(
           `INSERT INTO positions (
-            id, order_id, symbol, quantity, entry_price, status
-          ) VALUES (?, ?, ?, ?, ?, ?)`
-        ).run(positionId, orderId, request.symbol, request.quantity, entryPrice, 'OPEN');
+            id, entry_order_id, symbol, side, quantity, entry_price, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(positionId, orderId, request.symbol, 'LONG', request.quantity, entryPrice, 'OPEN');
 
         logger.info('Created new position', {
           positionId,
           orderId,
           symbol: request.symbol,
+          side: 'LONG',
           quantity: request.quantity,
           entryPrice,
         });
