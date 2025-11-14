@@ -46,16 +46,17 @@ export class RiskManager {
 
   async checkRiskLimits(
     signal: TradingViewSignal,
-    calculatedQuantity: number
+    calculatedQuantity: number,
+    bypassEnabledCheck: boolean = false
   ): Promise<RiskCheckResult> {
     try {
-      logger.info('Checking risk limits', { signal, calculatedQuantity });
+      logger.info('Checking risk limits', { signal, calculatedQuantity, bypassEnabledCheck });
 
       // Get current risk config from database
       const riskConfig = this.getRiskConfig();
 
-      // Check if trading is enabled
-      if (!riskConfig.enabled) {
+      // Check if trading is enabled (can be bypassed for manually approved signals)
+      if (!bypassEnabledCheck && !riskConfig.enabled) {
         return {
           allowed: false,
           reason: 'Trading is disabled',

@@ -26,15 +26,15 @@ export class OrderManager {
     private signalProcessor: SignalProcessor
   ) {}
 
-  async executeFromSignal(signalId: string, signal: TradingViewSignal, strategyId?: string | null): Promise<string> {
+  async executeFromSignal(signalId: string, signal: TradingViewSignal, strategyId?: string | null, bypassEnabledCheck: boolean = false): Promise<string> {
     try {
-      logger.info('Executing order from signal', { signalId, signal, strategyId });
+      logger.info('Executing order from signal', { signalId, signal, strategyId, bypassEnabledCheck });
 
       // Calculate quantity
       const quantity = await this.riskManager.calculatePositionSize(signal);
 
       // Check risk limits
-      const riskCheck = await this.riskManager.checkRiskLimits(signal, quantity);
+      const riskCheck = await this.riskManager.checkRiskLimits(signal, quantity, bypassEnabledCheck);
       const riskPassed = riskCheck.allowed;
 
       if (!riskPassed) {

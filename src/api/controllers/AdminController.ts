@@ -586,10 +586,12 @@ export class AdminController {
     strategyId?: string
   ) {
     try {
+      // Bypass "trading is disabled" check for manually approved signals
       const orderId = await this.orderManager.executeFromSignal(
         signalId,
         signal,
-        strategyId
+        strategyId,
+        true // bypassEnabledCheck = true
       );
 
       // Update pending signal with order ID
